@@ -62,7 +62,7 @@ setInterval(updateRate, 24 * 60 * 60 * 1000);
 
 const express = require('express');
 const app = express();
-const port = 3000;
+const port = 80;
 
 app.get('/', (req, res) => process(req, res));
 app.post('/', (req, res) => process(req, res));
