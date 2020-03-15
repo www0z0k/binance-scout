@@ -59,8 +59,30 @@ if(fs.existsSync('data.json')){
 const MA = (range, size) => {
     range = range > data.arr.length ? data.arr.length : range;
     let src = data.arr.slice(data.arr.length - range).map((el) => { return Number(el.price); });
-    console.log(src);
+    // console.log(src);
     return ma(src, size);
+}
+
+const getInterceptions = (arr1, arr2) => {
+    let res = [];
+    let diffs = [];
+    
+    if(arr1.length != arr2.length){
+        console.log('lengths mismatch');
+        return res;
+    }
+
+    for (var i = 0; i < arr1.length; i++) {
+        let diff = arr1[i] < arr2[i];
+        diffs.push(diff);
+        if(i > 0 && diffs[i - 1] != diff){
+            res.push({val: arr1[i], index: i});            
+        }
+        // if(Math.round(arr1[i]) == Math.round(arr2[i])){
+            // res.push({val: arr1[i], index: i});
+        // }
+    }
+    return res;
 }
 
 // console.log(MA(365, 25));
@@ -86,6 +108,8 @@ const process = (req, res) => {
     res.end('<h2>nothing to see here!</h2>');
 }
 
+console.log(getInterceptions(MA(365, 25), MA(365, 100)));
+
 app.get('/plots', (req, res) => {
     let m25 = MA(365, 25);
     let m100 = MA(365, 100);
@@ -96,6 +120,7 @@ app.get('/plots', (req, res) => {
                 </head>`;
     page += `<body>`;
     page += `<div id="tester" style="width:600px;height:250px;"></div>`;
+    page += `<div>interceptions:<br>${getInterceptions(m25, m100).map((el) => { return el.val + '@' + el.index }).join('<br>')}</div>`;
     page += `<script>
         TESTER = document.getElementById('tester');
         Plotly.newPlot( TESTER, [
