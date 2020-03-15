@@ -72,7 +72,7 @@ const process = (req, res) => {
 }
 
 app.get('/data', (req, res) => {
-    res.end(data.arr.map((el) => { return '$' + el.price + ' at ' + el.time}).join('<br>'));    
+    res.end(data.arr.map((el) => { return '$' + el.price + ' at ' + el.time}).join('\n'));    
 });
 
 app.listen(port, () => console.log(`up and running at ${port}!`));
