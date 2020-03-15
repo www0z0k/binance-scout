@@ -2,6 +2,11 @@
 const fs = require('fs');
 const path = require('path');
 const Binance = require('binance-api-node').default;
+const ma = require('moving-averages').ma;
+// import {
+//   ma, dma, ema, sma, wma
+// } from 
+
 // require('es6-promise/auto');
 ////////////////////////////////
 //for unsigned
@@ -51,6 +56,16 @@ if(fs.existsSync('data.json')){
   count: 314986 // Trade count
 }*/
 
+const MA = (range, size) => {
+    range = range > data.arr.length ? data.arr.length : range;
+    let src = data.arr.slice(data.arr.length - range).map((el) => { return Number(el.price); });
+    console.log(src);
+    return ma(src, size);
+}
+
+// console.log(MA(365, 25));
+// console.log(MA(365, 10));
+
 async function updateRate() {
     let res = await client.dailyStats({ symbol: 'BTCUSDT' });
     data.arr.push({time: res.closeTime, price: res.lastPrice});
@@ -70,6 +85,32 @@ app.post('/', (req, res) => process(req, res));
 const process = (req, res) => {
     res.end('<h2>nothing to see here!</h2>');
 }
+
+app.get('/plots', (req, res) => {
+    let m25 = MA(365, 25);
+    let m100 = MA(365, 100);
+
+    let page = `<html>`;
+    page += `<head>
+                    <script src="https://cdn.plot.ly/plotly-1.2.0.min.js"></script>
+                </head>`;
+    page += `<body>`;
+    page += `<div id="tester" style="width:600px;height:250px;"></div>`;
+    page += `<script>
+        TESTER = document.getElementById('tester');
+        Plotly.newPlot( TESTER, [
+        {x: [${m25.map((el, i) => {return i;}).join(', ')}],
+        y: [${m25.join(', ')}], name: "25" },
+        {x: [${m100.map((el, i) => {return i;}).join(', ')}],
+        y: [${m100.join(', ')}], name: "100" }
+
+        ], {
+        margin: { t: 0 } } );
+    </script>`;
+    page += `</body>`;
+    page += `</html>`;
+    res.end(page);
+});
 
 app.get('/data', (req, res) => {
     res.end(data.arr.map((el) => { return '$' + el.price + ' at ' + el.time}).join('\n'));    
