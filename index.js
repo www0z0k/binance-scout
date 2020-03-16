@@ -15,7 +15,7 @@ const client = Binance();
 const saveFile = (data) =>{
     fs.writeFile('data.json', JSON.stringify(data, null, '\t'), (err) => {
         if (err) throw err;
-        console.log(`creds saved`);
+        console.log(`${data.arr.length} items saved`);
     });
 }
 
@@ -56,9 +56,10 @@ if(fs.existsSync('data.json')){
   count: 314986 // Trade count
 }*/
 
-const MA = (range, size) => {
-    range = range > data.arr.length ? data.arr.length : range;
-    let src = data.arr.slice(data.arr.length - range).map((el) => { return Number(el.price); });
+const MA = (size, field) => {
+    field = field || 'price';
+    range = data.arr.length;
+    let src = data.arr.slice().map((el) => { return Number(el[field]); });
     // console.log(src);
     return ma(src, size);
 }
@@ -85,16 +86,35 @@ const getInterceptions = (arr1, arr2) => {
     return res;
 }
 
-// console.log(MA(365, 25));
-// console.log(MA(365, 10));
+// console.log(MA(25));
+// console.log(MA(10));
 
 async function updateRate() {
-    let res = await client.dailyStats({ symbol: 'BTCUSDT' });
-    data.arr.push({time: res.closeTime, price: res.lastPrice});
+    let avgPriceSrv = await client.avgPrice({symbol: 'BTCUSDT'});
+    avgPriceSrv = Number(avgPriceSrv.price);
+    let res = await client.trades({symbol: 'BTCUSDT'});
+    let totalPrice = 0;
+    res.forEach(el => totalPrice += Number(el.price));
+
+    let totalPriceForWeight = 0;
+    let totalDividerForWeight = 0;
+    let weightBase = Number(res[0].qty);
+
+  
+//{"id":268893991,"price":"4523.21000000","qty":"0.01888200","quoteQty":"85.40725122","time":1584356745682,"isBuyerMaker":true,"isBestMatch":true}
+    res.forEach(el => {
+        let k = Number(el.qty) / weightBase;
+        totalPriceForWeight += Number(el.price) * k;        
+        totalDividerForWeight += k;
+    });
+
+    avgPriceWeighted = (totalPriceForWeight / totalDividerForWeight);
+    data.arr.push({time: Date.now(), avg: avgPriceSrv, price: avgPriceWeighted});
+
     saveFile(data);
 }
-// updateRate();
-setInterval(updateRate, 24 * 60 * 60 * 1000);
+updateRate();
+setInterval(updateRate, 15 * 60 * 1000);
 
 
 const express = require('express');
@@ -108,11 +128,11 @@ const process = (req, res) => {
     res.end('<h2>nothing to see here!</h2>');
 }
 
-console.log(getInterceptions(MA(365, 25), MA(365, 100)));
+// console.log(getInterceptions(MA(25), MA(100)));
 
 app.get('/plots', (req, res) => {
-    let m25 = MA(365, 25);
-    let m100 = MA(365, 100);
+    let m25 = MA(25);
+    let m100 = MA(100);
 
     let page = `<html>`;
     page += `<head>
