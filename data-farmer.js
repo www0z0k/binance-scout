@@ -4,10 +4,11 @@ const path = require('path');
 const ma = require('moving-averages').ma;
 
 class Farmer{
-  constructor(fileName, tickInterval, port){
+  constructor(fileName, tickInterval, port, pair){
     this.Binance = require('binance-api-node').default;
     this.client = this.Binance();
 
+    this.pair = pair || 'BTCUSDT';
     this.fileName = fileName;
     this.tickInterval = tickInterval * 60 * 1000;
     this.port = port;
@@ -59,6 +60,7 @@ class Farmer{
                       <script src="https://cdn.plot.ly/plotly-1.2.0.min.js"></script>
                   </head>`;
       page += `<body>`;
+      page += `<h5>${this.pair}</h5>`;
       page += `<div id="tester" style="width:600px;height:250px;"></div>`;
       page += `<div>interceptions:<br>${this.getInterceptions(m12, m24).map((el) => { return el.val + '@' + el.index }).join('<br>')}</div>`;
       page += `<script>
@@ -118,9 +120,9 @@ class Farmer{
   }
 
   async updateRate() {
-    let avgPriceSrv = await this.client.avgPrice({symbol: 'BTCUSDT'});
+    let avgPriceSrv = await this.client.avgPrice({symbol: this.pair});
     avgPriceSrv = Number(avgPriceSrv.price);
-    let res = await this.client.trades({symbol: 'BTCUSDT'});
+    let res = await this.client.trades({symbol: this.pair});
     let totalPrice = 0;
     res.forEach(el => totalPrice += Number(el.price));
 
