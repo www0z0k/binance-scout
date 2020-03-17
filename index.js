@@ -62,7 +62,6 @@ if(fs.existsSync('data.json')){
 
 const MA = (size, field) => {
     field = field || 'price';
-    range = data.arr.length;
     let src = data.arr.slice().map((el) => { return Number(el[field]); });
     // console.log(src);
     return ma(src, size);
@@ -112,7 +111,7 @@ async function updateRate() {
         totalDividerForWeight += k;
     });
 
-    avgPriceWeighted = (totalPriceForWeight / totalDividerForWeight);
+    let avgPriceWeighted = (totalPriceForWeight / totalDividerForWeight);
     data.arr.push({time: Date.now(), avg: avgPriceSrv, price: avgPriceWeighted});
 
     saveFile(data);
