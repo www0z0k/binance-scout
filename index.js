@@ -27,9 +27,13 @@ const pingLoop = () => {
     });
 }
 // pingLoop();
+const UPDATE_INTERVAL = 15 * 60 * 1000;
+
 let data = { arr: [] };
+let lastTime = 0;
 if(fs.existsSync('data.json')){
 	data = JSON.parse(fs.readFileSync('data.json'));
+    lastTime = data.arr[data.arr.length - 1].time;
 }
 
 /*{
@@ -77,7 +81,7 @@ const getInterceptions = (arr1, arr2) => {
         let diff = arr1[i] < arr2[i];
         diffs.push(diff);
         if(i > 0 && diffs[i - 1] != diff){
-            res.push({val: arr1[i], index: i});            
+            res.push({val: arr1[i], index: i});
         }
         // if(Math.round(arr1[i]) == Math.round(arr2[i])){
             // res.push({val: arr1[i], index: i});
@@ -113,8 +117,15 @@ async function updateRate() {
 
     saveFile(data);
 }
-updateRate();
-setInterval(updateRate, 15 * 60 * 1000);
+if(!lastTime || Date.now() - lastTime > UPDATE_INTERVAL){
+    updateRate();
+    setInterval(updateRate, UPDATE_INTERVAL);
+}else{
+    setTimeout(() => {
+        updateRate();
+        setInterval(updateRate, UPDATE_INTERVAL);
+    }, UPDATE_INTERVAL - (Date.now() - lastTime));
+}
 
 
 const express = require('express');
@@ -130,9 +141,15 @@ const process = (req, res) => {
 
 // console.log(getInterceptions(MA(25), MA(100)));
 
+app.get('/interceptions12-24', (req, res) => {
+    let m12 = MA(12);
+    let m24 = MA(24);
+    res.end(JSON.stringify(getInterceptions(m12, m24)));
+});
+
 app.get('/plots', (req, res) => {
-    let m25 = MA(25);
-    let m100 = MA(100);
+    let m12 = MA(12);
+    let m24 = MA(24);
 
     let page = `<html>`;
     page += `<head>
@@ -140,14 +157,14 @@ app.get('/plots', (req, res) => {
                 </head>`;
     page += `<body>`;
     page += `<div id="tester" style="width:600px;height:250px;"></div>`;
-    page += `<div>interceptions:<br>${getInterceptions(m25, m100).map((el) => { return el.val + '@' + el.index }).join('<br>')}</div>`;
+    page += `<div>interceptions:<br>${getInterceptions(m12, m24).map((el) => { return el.val + '@' + el.index }).join('<br>')}</div>`;
     page += `<script>
         TESTER = document.getElementById('tester');
         Plotly.newPlot( TESTER, [
-        {x: [${m25.map((el, i) => {return i;}).join(', ')}],
-        y: [${m25.join(', ')}], name: "25" },
-        {x: [${m100.map((el, i) => {return i;}).join(', ')}],
-        y: [${m100.join(', ')}], name: "100" }
+        {x: [${m12.map((el, i) => {return i;}).join(', ')}],
+        y: [${m12.join(', ')}], name: "12" },
+        {x: [${m24.map((el, i) => {return i;}).join(', ')}],
+        y: [${m24.join(', ')}], name: "24" }
 
         ], {
         margin: { t: 0 } } );
