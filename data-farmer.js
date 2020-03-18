@@ -51,9 +51,17 @@ class Farmer{
       res.end(JSON.stringify(this.getInterceptions(m12, m24)));
     });
 
+    this.app.get('/interceptions12-24-100', (req, res) => {
+      let m12 = this.MA(12);
+      let m24 = this.MA(24);
+      let m100 = this.MA(100);
+      res.end(JSON.stringify(this.getThreeInterceptions(m12, m24, m100)));
+    });
+
     this.app.get('/plots', (req, res) => {
       let m12 = this.MA(12);
       let m24 = this.MA(24);
+      let m100 = this.MA(100);
 
       let page = `<html>`;
       page += `<head>
@@ -61,7 +69,8 @@ class Farmer{
                   </head>`;
       page += `<body>`;
       page += `<h5>${this.pair}</h5>`;
-      page += `<div id="tester" style="width:600px;height:250px;"></div>`;
+      page += `<div id="tester" style="width:600px;height:350px;"></div>`;
+      // page += `<div>3x interceptions:<br>${this.getThreeInterceptions(m12, m24, m100).map((el) => { return el.val + '@' + el.index }).join('<br>')}</div>`;
       page += `<div>interceptions:<br>${this.getInterceptions(m12, m24).map((el) => { return el.val + '@' + el.index }).join('<br>')}</div>`;
       page += `<script>
           TESTER = document.getElementById('tester');
@@ -69,7 +78,9 @@ class Farmer{
           {x: [${m12.map((el, i) => {return i;}).join(', ')}],
           y: [${m12.join(', ')}], name: "12" },
           {x: [${m24.map((el, i) => {return i;}).join(', ')}],
-          y: [${m24.join(', ')}], name: "24" }
+          y: [${m24.join(', ')}], name: "24" },
+          {x: [${m100.map((el, i) => {return i;}).join(', ')}],
+          y: [${m100.join(', ')}], name: "100" }
 
           ], {
           margin: { t: 0 } } );
@@ -114,6 +125,32 @@ class Farmer{
         diffs.push(diff);
         if(i > 0 && diffs[i - 1] != diff){
             res.push({val: arr1[i], index: i});
+        }
+    }
+    return res;
+  }
+
+  getThreeInterceptions (arr1, arr2, arr3) {
+    let res = [];
+    let diffs = [];
+    
+    if(arr1.length != arr2.length){
+        console.log('lengths mismatch');
+        return res;
+    }
+
+    for (var i = 0; i < arr1.length; i++) {
+        let diff12 = arr1[i] < arr2[i]
+        let diff13 = arr1[i] < arr3[i];
+        let diff23 = arr2[i] < arr3[i];
+
+        diffs.push([diff12, diff13, diff23]);
+
+        if(i > 0){
+          let prev = diffs[i - 1];
+          if(diff12 != prev[0] && diff13 != prev[1] && diff23 != prev[2]){
+            res.push({val: arr1[i], index: i});
+          }
         }
     }
     return res;
