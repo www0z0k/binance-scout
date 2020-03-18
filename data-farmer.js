@@ -84,6 +84,9 @@ class Farmer{
 
           ], {
           margin: { t: 0 } } );
+          setTimeout(function(){
+            location.reload();
+          }, 60000);
       </script>`;
       page += `</body>`;
       page += `</html>`;
