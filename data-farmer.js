@@ -4,7 +4,7 @@ const path = require('path');
 const ma = require('moving-averages').ma;
 
 class Farmer{
-  constructor(fileName, tickInterval, port, pair){
+  constructor(fileName, tickInterval, port, pair, ma1, ma2){
     this.Binance = require('binance-api-node').default;
     this.client = this.Binance();
 
@@ -12,6 +12,8 @@ class Farmer{
     this.fileName = fileName;
     this.tickInterval = tickInterval * 60 * 1000;
     this.port = port;
+    this.ma1 = ma1 || 12;
+    this.ma2 = ma2 || 24;
 
     this.data = { arr: [] };
     this.lastTime = 0;
@@ -46,21 +48,21 @@ class Farmer{
     // console.log(getInterceptions(MA(25), MA(100)));
 
     this.app.get('/interceptions12-24', (req, res) => {
-      let m12 = this.MA(12);
-      let m24 = this.MA(24);
+      let m12 = this.MA(this.ma1);
+      let m24 = this.MA(this.ma2);
       res.end(JSON.stringify(this.getInterceptions(m12, m24)));
     });
 
     this.app.get('/interceptions12-24-100', (req, res) => {
-      let m12 = this.MA(12);
-      let m24 = this.MA(24);
+      let m12 = this.MA(this.ma1);
+      let m24 = this.MA(this.ma2);
       let m100 = this.MA(100);
       res.end(JSON.stringify(this.getThreeInterceptions(m12, m24, m100)));
     });
 
     this.app.get('/plots', (req, res) => {
-      let m12 = this.MA(12);
-      let m24 = this.MA(24);
+      let m12 = this.MA(this.ma1);
+      let m24 = this.MA(this.ma2);
       let m100 = this.MA(100);
 
       let page = `<html>`;
@@ -76,9 +78,9 @@ class Farmer{
           TESTER = document.getElementById('tester');
           Plotly.newPlot( TESTER, [
           {x: [${m12.map((el, i) => {return i;}).join(', ')}],
-          y: [${m12.join(', ')}], name: "12" },
+          y: [${m12.join(', ')}], name: "${this.ma1}" },
           {x: [${m24.map((el, i) => {return i;}).join(', ')}],
-          y: [${m24.join(', ')}], name: "24" },
+          y: [${m24.join(', ')}], name: "${this.ma2}" },
           {x: [${m100.map((el, i) => {return i;}).join(', ')}],
           y: [${m100.join(', ')}], name: "100" }
 
@@ -184,42 +186,3 @@ class Farmer{
 }
 
 exports.Farmer = Farmer;
-
-
-
-/*{
-  symbol: 'ETHBTC',
-  priceChange: '-0.00112000',
-  priceChangePercent: '-1.751',
-  weightedAvgPrice: '0.06324784',
-  prevClosePrice: '0.06397400',
-  lastPrice: '0.06285500',
-  lastQty: '0.63500000',
-  bidPrice: '0.06285500',
-  bidQty: '0.81900000',
-  askPrice: '0.06291900',
-  askQty: '2.93800000',
-  openPrice: '0.06397500',
-  highPrice: '0.06419100',
-  lowPrice: '0.06205300',
-  volume: '126240.37200000',
-  quoteVolume: '7984.43091340',
-  openTime: 1521622289427,
-  closeTime: 1521708689427,
-  firstId: 45409308, // First tradeId
-  lastId: 45724293, // Last tradeId
-  count: 314986 // Trade count
-}*/
-
-
-
-
-
-// console.log(MA(25));
-// console.log(MA(10));
-
-
-
-
-
-
