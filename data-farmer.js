@@ -73,7 +73,7 @@ class Farmer{
       page += `<h5>${this.pair}</h5>`;
       page += `<div id="tester" style="width:600px;height:350px;"></div>`;
       // page += `<div>3x interceptions:<br>${this.getThreeInterceptions(m12, m24, m100).map((el) => { return el.val + '@' + el.index }).join('<br>')}</div>`;
-      page += `<div>interceptions:<br>${this.getInterceptions(m12, m24).map((el) => { return el.val + '@' + el.index }).join('<br>')}</div>`;
+      page += `<div>interceptions:<br>${this.getInterceptions(m12, m24).map((el) => { return el.val + '@' + el.index }).reverse().join('<br>')}</div>`;
       page += `<script>
           TESTER = document.getElementById('tester');
           Plotly.newPlot( TESTER, [
