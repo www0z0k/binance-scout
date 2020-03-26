@@ -81,8 +81,8 @@ class Farmer{
           y: [${m12.join(', ')}], name: "${this.ma1}" },
           {x: [${m24.map((el, i) => {return i;}).join(', ')}],
           y: [${m24.join(', ')}], name: "${this.ma2}" },
-          {x: [${m100.map((el, i) => {return i;}).join(', ')}],
-          y: [${m100.join(', ')}], name: "100" }
+          //{x: [${m100.map((el, i) => {return i;}).join(', ')}],
+          //y: [${m100.join(', ')}], name: "100" }
 
           ], {
           margin: { t: 0 } } );
