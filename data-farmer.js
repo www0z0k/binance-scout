@@ -78,9 +78,9 @@ class Farmer{
           TESTER = document.getElementById('tester');
           Plotly.newPlot( TESTER, [
           {x: [${m12.map((el, i) => {return i;}).join(', ')}],
-          y: [${m12.join(', ')}], name: "${this.ma1}" },
+          y: [${m12.join(', ')}], name: "${req.query.ma1 || this.ma1}" },
           {x: [${m24.map((el, i) => {return i;}).join(', ')}],
-          y: [${m24.join(', ')}], name: "${this.ma2}" },
+          y: [${m24.join(', ')}], name: "${req.query.ma2 || this.ma2}" },
           //{x: [${m100.map((el, i) => {return i;}).join(', ')}],
           //y: [${m100.join(', ')}], name: "100" }
 
