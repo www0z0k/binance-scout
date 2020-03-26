@@ -48,8 +48,8 @@ class Farmer{
     // console.log(getInterceptions(MA(25), MA(100)));
 
     this.app.get('/interceptions12-24', (req, res) => {
-      let m12 = this.MA(this.ma1);
-      let m24 = this.MA(this.ma2);
+      let m12 = this.MA(req.query.ma1 || this.ma1);
+      let m24 = this.MA(req.query.ma2 || this.ma2);
       res.end(JSON.stringify(this.getInterceptions(m12, m24)));
     });
 
@@ -61,8 +61,8 @@ class Farmer{
     });
 
     this.app.get('/plots', (req, res) => {
-      let m12 = this.MA(this.ma1);
-      let m24 = this.MA(this.ma2);
+      let m12 = this.MA(req.query.ma1 || this.ma1);
+      let m24 = this.MA(req.query.ma2 || this.ma2);
       let m100 = this.MA(100);
 
       let page = `<html>`;
