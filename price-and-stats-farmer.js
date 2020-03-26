@@ -57,7 +57,7 @@ class StatsFarmer{
 
     this.app.get('/get-last', (req, res) => {
       let q = req.query.q || 6;
-      res.end(JSON.stringify(this.data.arr.slice(this.data.arr.length - q)));
+      res.end(JSON.stringify(this.getLastSum(q)));
     });
 
     this.app.get('/plots', (req, res) => {
@@ -73,7 +73,7 @@ class StatsFarmer{
       page += `<h5>${this.pair}</h5>`;
       page += `<p>30 seconds</p>`;
       page += `<div id="tester" style="width:600px;height:350px;"></div>`;
-      page += `<div>interceptions:<br>${this.getInterceptions(m12, m24).map((el) => { return el.val + '@' + el.index }).reverse().join('<br>')}</div>`;
+      page += `<div>interceptions:<br>${this.getInterceptions(m12, m24).map((el) => { return el.val + '@' + el.index + ' b: ' + el.bought + ' s: ' + el.sold }).reverse().join('<br>')}</div>`;
       page += `<script>
           TESTER = document.getElementById('tester');
           Plotly.newPlot( TESTER, [
@@ -102,6 +102,26 @@ class StatsFarmer{
     this.app.listen(this.port, () => console.log(`up and running at ${this.port}!`));
   }
   
+  getLastSum(q){
+    let bought = 0;
+    let sold = 0;
+    this.data.arr.slice(this.data.arr.length - q).forEach(el => {
+      bought += el.bought;
+      sold += el.sold;
+    })
+    return {bought, sold};
+  }
+
+  getRangeSum(q, to){
+    let bought = 0;
+    let sold = 0;
+    this.data.arr.slice(q, to).forEach(el => {
+      bought += el.bought;
+      sold += el.sold;
+    })
+    return {bought, sold};
+  }
+
   saveFile(data){
     fs.writeFile(this.fileName, JSON.stringify(this.data, null, '\t'), (err) => {
         if (err) throw err;
@@ -129,7 +149,8 @@ class StatsFarmer{
         let diff = arr1[i] < arr2[i];
         diffs.push(diff);
         if(i > 0 && diffs[i - 1] != diff){
-            res.push({val: arr1[i], index: i});
+            let stat = this.getRangeSum(i - 6, i);
+            res.push({val: arr1[i], index: i, sold: stat.sold, bought: stat.bought});
         }
     }
     return res;
