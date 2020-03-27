@@ -149,7 +149,7 @@ class StatsFarmer{
         let diff = arr1[i] < arr2[i];
         diffs.push(diff);
         if(i > 0 && diffs[i - 1] != diff){
-            let stat = this.getRangeSum(i - 6, i);
+            let stat = this.getRangeSum(i - 3, i);
             res.push({val: arr1[i], index: i, sold: stat.sold, bought: stat.bought});
         }
     }
@@ -183,6 +183,7 @@ class StatsFarmer{
         totalDividerForWeight += k;
         
         if(el.id > this.lastId){
+          console.log(el)
           if(el.isBuyerMaker){
               bought += Number(el.qty);
           }else{
