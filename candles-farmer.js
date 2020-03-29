@@ -11,7 +11,7 @@ class CandlesFarmer{
     this.pair = pair || 'BTCUSDT';
     this.fileName = fileName;
     // this.tickInterval = 30 * 1000;
-    this.tickInterval = 60 * 1000;
+    this.tickInterval = 5 * 1000;
     this.port = port;
     this.ma1 = ma1 || 12;
     this.ma2 = ma2 || 24;
