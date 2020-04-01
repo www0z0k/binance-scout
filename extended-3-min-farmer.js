@@ -12,9 +12,8 @@ class FarmerExt{
     this.fileName = fileName;
     this.tickInterval = 3 * 60 * 1000;
     this.port = port;
-    this.ma1 = ma1 || 12;
-    this.ma2 = ma2 || 24;
-    this.extended = extended;
+    this.ma1 = 24;
+    this.ma2 = 48;
 
     this.data = { arr: [] };
     this.lastTime = 0;
