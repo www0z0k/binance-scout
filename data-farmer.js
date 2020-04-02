@@ -180,7 +180,10 @@ class Farmer{
     });
 
     let avgPriceWeighted = (totalPriceForWeight / totalDividerForWeight);
-    this.data.arr.push({time: Date.now(), avg: avgPriceSrv, price: avgPriceWeighted});
+
+    let candles = await this.client.candles({symbol: this.pair, interval: '1m', limit: 2});
+
+    this.data.arr.push({time: Date.now(), avg: avgPriceSrv, price: avgPriceWeighted, candles: candles});
 
     this.saveFile(this.data);
   }
