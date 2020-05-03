@@ -5,8 +5,13 @@ const path = require('path');
 
 class CandlesAndWalls{
   constructor(port, pair){
-    this.Binance = require('binance-api-node').default;
-    this.client = this.Binance();
+    // this.Binance = require('binance-api-node').default;
+    // this.client = this.Binance();
+
+    this.binance = new require('node-binance-api')(/*{
+      APIKEY: '<key>',
+      APISECRET: '<secret>'
+    }*/);
 
     this.pair = pair || 'BTCUSDT';
 
@@ -48,6 +53,10 @@ class CandlesAndWalls{
       page += `<h5>${this.pair}</h5>`;
       page += `<canvas id="canv" width="1000" height="700" style="border:1px solid blue;"></canvas>`;
       page += `<script>
+Array.prototype.last = function(){
+  return this[this.length - 1];
+}
+
 var canvas = document.getElementById("canv");
 var ctx = canvas.getContext('2d');
 ctx.clearRect(0, 0, 1000, 700);
@@ -56,11 +65,11 @@ var sells = ${JSON.stringify(this.toShow.walls.sell)};
 var startPrice = ${this.toShow.price};
 
 
-var dPriceBuy = buys[0].price - buys[499].price;
-var dPriceSell = sells[499].price - sells[0].price;
+var dPriceBuy = buys[0].price - buys.last().price;
+var dPriceSell = sells.last().price - sells[0].price;
 var dPrice = Math.max(dPriceSell, dPriceBuy);
 
-var dSum = Math.max(buys[499].sum, sells[499].sum);
+var dSum = Math.max(buys.last().sum, sells.last().sum);
 
 var wallsCenterX = 250;
 var wallPriceScale = 250 / dPrice;
@@ -162,8 +171,8 @@ ctx.font = '16px sans';
 ctx.fillText('vol ' + dSum.toFixed(2), 0, 20);
 
 ctx.fillText(startPrice.toFixed(2), 250 - 27, 690);
-ctx.fillText(buys[499].price.toFixed(2), 250 - wallPriceScale * dPriceBuy, 690);
-ctx.fillText(sells[499].price.toFixed(2), 250 + wallPriceScale * dPriceSell - 53, 690);
+ctx.fillText(buys.last().price.toFixed(2), 250 - wallPriceScale * dPriceBuy, 690);
+ctx.fillText(sells.last().price.toFixed(2), 250 + wallPriceScale * dPriceSell - 53, 690);
 
 ctx.fillText(maxCandle.toFixed(2), 500, 20);
 ctx.fillText(minCandle.toFixed(2), 500, 690);
@@ -201,16 +210,20 @@ ctx.fillText(minCandle.toFixed(2), 500, 690);
     trades: 85,
     baseAssetVolume: '40.61900000',
   */
-    let candles = await this.client.candles({symbol: this.pair, interval: this._candle, limit: this._candlesNum});
-
-    this.toShow.candles = candles.map(el => {
-      el.open = Number(el.open);
-      el.high = Number(el.high);
-      el.low = Number(el.low);
-      el.close = Number(el.close);
-      el.bull = el.open < el.close;
-      return el;
-    });
+    this.binance.candlesticks(this.pair, this._candle, (error, candles, symbol) => {
+      this.toShow.candles = candles.map(arr => {
+        // let [time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored] = arr;
+        let el = {};
+        el.open = Number(arr[1]);
+        el.high = Number(arr[2]);
+        el.low = Number(arr[3]);
+        el.close = Number(arr[4]);
+        el.volume = Number(arr[5]);
+        el.bull = el.open < el.close;
+        // console.log(el);
+        return el;
+      });      
+    }, {limit: this._candlesNum/*, endTime: Date.now()*/});
 
   /*
     ASKS - more than current (sells)
@@ -218,21 +231,28 @@ ctx.fillText(minCandle.toFixed(2), 500, 690);
 
     price, quantity
   */
-    let fut = await this.client.futuresBook({ symbol: this.pair });
-    this.toShow.price = (Number(fut.bids[0].price) + Number(fut.asks[0].price)) / 2;
-    
-    let sumSell = 0;
-    this.toShow.walls.sell = fut.asks.map(el => {
-      let res = {price: Number(el.price), sum: sumSell + Number(el.quantity)};
-      sumSell += Number(el.quantity);
-      return res;
-    });
+    this.binance.depth(this.pair, (error, depth, symbol) => {
+      let firstBid, firstAsk;
 
-    let sumBuy = 0;
-    this.toShow.walls.buy = fut.bids.map(el => {
-      let res = {price: Number(el.price), sum: sumBuy + Number(el.quantity)};
-      sumBuy += Number(el.quantity);
-      return res;
+
+      let sumSell = 0;
+      this.toShow.walls.sell = [];
+      for(let price in depth.asks){
+        firstAsk = firstAsk || price;
+        let res = {price: Number(price), sum: sumSell + Number(depth.asks[price])};
+        this.toShow.walls.sell.push(res);
+        sumSell += Number(depth.asks[price]);
+      }
+
+      let sumBuy = 0;
+      this.toShow.walls.buy = [];
+      for(let price in depth.bids){
+        firstBid = firstBid || price;
+        let res = {price: Number(price), sum: sumBuy + Number(depth.bids[price])};
+        this.toShow.walls.buy.push(res);
+        sumBuy += Number(depth.bids[price]);
+      }
+      this.toShow.price = (Number(firstAsk) + Number(firstBid)) / 2;    
     });
   }
 }
