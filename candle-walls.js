@@ -80,12 +80,20 @@ candles.forEach(el => {
 var dPriceBuy = buys[0].price - buys.last().price;
 var dPriceSell = sells.last().price - sells[0].price;
 var dPrice = Math.max(dPriceSell, dPriceBuy);
+var dPrice = Math.max(dPrice, maxCandle - minCandle);
 
 var dSum = Math.max(buys.last().sum, sells.last().sum);
 
-var priceY = DRAW_BOTTOM - DRAW_BOTTOM * (candles.last().close - minCandle) / (maxCandle - minCandle);
+var absMin = Math.min(sells[0].price, buys.last().price, minCandle)
+var absMax = Math.max(buys[0].price, sells.last().price, maxCandle)
+function getPriceY(pr){
+  return DRAW_BOTTOM - DRAW_BOTTOM * (pr - absMin) / (absMax - absMin);
+}
+
+var priceY = getPriceY(candles.last().close);
+
 var wallsCenterY = priceY;
-var wallPriceScale = (DRAW_BOTTOM / 2) / dPrice;
+var wallPriceScale = DRAW_BOTTOM / dPrice;
 var wallVolScale = 500 / dSum;
 
 //Delimiter
@@ -144,7 +152,6 @@ ctx.closePath();
 var space = 6;
 var candleWidth = 500 / candles.length - space;
 
-var dPrice = maxCandle - minCandle;
 var priceScale = DRAW_BOTTOM / dPrice;
 
 candles.forEach((el, i) => {
@@ -178,19 +185,18 @@ ctx.font = '13px monospace';
 ctx.fillText('vol ' + dSum.toFixed(2), 0, 10);
 
 //depth scale
-ctx.fillText(startPrice.toFixed(2), 500 - 57, DRAW_BOTTOM / 2);
-ctx.fillText(buys.last().price.toFixed(2), 500 - 57, DRAW_BOTTOM + 10);
-ctx.fillText(sells.last().price.toFixed(2), 500 - 57, 10);
+ctx.fillText(buys.last().price.toFixed(2), 500, getPriceY(buys.last().price) + 10);
+ctx.fillText(sells.last().price.toFixed(2), 500, getPriceY(sells.last().price) + 10);
 
 //candles scale
-ctx.fillText(maxCandle.toFixed(2), 500, 10);
-ctx.fillText(minCandle.toFixed(2), 500, DRAW_BOTTOM + 10);
+ctx.fillText(maxCandle.toFixed(2), 500, getPriceY(maxCandle) + 10);
+ctx.fillText(minCandle.toFixed(2), 500, getPriceY(minCandle) + 10);
 
 //curr price
 ctx.strokeStyle = 'rgba(0, 125, 125, 1)';
 ctx.fillStyle = 'rgba(0, 125, 125, 1)';
 
-ctx.fillText(candles.last().close.toFixed(2), 500, priceY);
+ctx.fillText(candles.last().close.toFixed(2), 500, priceY + 5);
 ctx.beginPath();
 ctx.moveTo(1060, priceY);
 ctx.lineTo(560, priceY);
