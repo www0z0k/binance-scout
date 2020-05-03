@@ -47,11 +47,11 @@ class CandlesAndWalls{
 
       let page = `<html>`;
       page += `<head>
-                      <script src="https://cdn.plot.ly/plotly-1.2.0.min.js"></script>
+                      <!--script src="https://cdn.plot.ly/plotly-1.2.0.min.js"></script-->
                   </head>`;
-      page += `<body>`;
-      page += `<h5>${this.pair}</h5>`;
-      page += `<canvas id="canv" width="1060" height="700" style="border:1px solid blue;"></canvas>`;
+      page += `<body style="background-color:#1D1D1D;">`;
+      page += `<h5 style="color:#ffff00;">${this.pair}</h5>`;
+      page += `<canvas id="canv" width="1060" height="700" style="border:1px solid #ff00ff;"></canvas>`;
       page += `<script>
 Array.prototype.last = function(){
   return this[this.length - 1];
@@ -59,12 +59,22 @@ Array.prototype.last = function(){
 
 var canvas = document.getElementById("canv");
 var ctx = canvas.getContext('2d');
-ctx.clearRect(0, 0, 1000, 700);
+ctx.fillStyle = '#1D1D1D';
+ctx.rect(0, 0, 1060, 700);
+ctx.fill();
 
 var DRAW_BOTTOM = 680;
 var buys = ${JSON.stringify(this.toShow.walls.buy)};
 var sells = ${JSON.stringify(this.toShow.walls.sell)};
+var candles = ${JSON.stringify(this.toShow.candles)};
 var startPrice = ${this.toShow.price};
+
+var maxCandle = 0;
+var minCandle = 0;
+candles.forEach(el => {
+  maxCandle = maxCandle ? (maxCandle < el.high ? el.high : maxCandle) : el.high;
+  minCandle = minCandle ? (minCandle > el.low ? el.low : minCandle) : el.low;
+});
 
 
 var dPriceBuy = buys[0].price - buys.last().price;
@@ -73,15 +83,16 @@ var dPrice = Math.max(dPriceSell, dPriceBuy);
 
 var dSum = Math.max(buys.last().sum, sells.last().sum);
 
-var wallsCenterX = 250;
-var wallPriceScale = 250 / dPrice;
-var wallVolScale = DRAW_BOTTOM / dSum;
+var priceY = DRAW_BOTTOM - DRAW_BOTTOM * (candles.last().close - minCandle) / (maxCandle - minCandle);
+var wallsCenterY = priceY;
+var wallPriceScale = (DRAW_BOTTOM / 2) / dPrice;
+var wallVolScale = 500 / dSum;
 
 //Delimiter
 ctx.beginPath();
 ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
-ctx.moveTo(520, 0);
-ctx.lineTo(520, 700);
+ctx.moveTo(500, 0);
+ctx.lineTo(500, 700);
 ctx.stroke();
 ctx.closePath();
 
@@ -93,15 +104,14 @@ ctx.lineWidth = 1;
 ctx.beginPath();
 ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
 ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
-ctx.moveTo(0, DRAW_BOTTOM);
-ctx.moveTo(250, DRAW_BOTTOM);
-var lastX = 0;
+ctx.moveTo(500, wallsCenterY);
+var lastY = 0;
 for (var i = 0; i < buys.length; i++) {
-  lastX = 250 - (startPrice - buys[i].price) * wallPriceScale;
-  var y = DRAW_BOTTOM - buys[i].sum * wallVolScale;
-  ctx.lineTo(lastX, y);
+  lastY = wallsCenterY + (startPrice - buys[i].price) * wallPriceScale;
+  var x = 500 - buys[i].sum * wallVolScale;
+  ctx.lineTo(x, lastY);
 }
-ctx.lineTo(lastX, DRAW_BOTTOM);
+ctx.lineTo(500, lastY);
 ctx.fill();
 ctx.stroke();
 ctx.closePath();
@@ -113,14 +123,15 @@ ctx.closePath();
 ctx.beginPath();
 ctx.strokeStyle = 'rgba(0, 255, 0, 1)';
 ctx.fillStyle = 'rgba(0, 255, 0, 0.4)';
-ctx.moveTo(250, DRAW_BOTTOM);
+ctx.moveTo(500, wallsCenterY);
 
+var lastY = 0;
 for (var i = 0; i < sells.length; i++) {
-  lastX = 250 + (sells[i].price - startPrice) * wallPriceScale;
-  var y = DRAW_BOTTOM - sells[i].sum * wallVolScale;
-  ctx.lineTo(lastX, y);
+  lastY = wallsCenterY - (sells[i].price - startPrice) * wallPriceScale;
+  var x = 500 - sells[i].sum * wallVolScale;
+  ctx.lineTo(x, lastY);
 }
-ctx.lineTo(lastX, DRAW_BOTTOM);
+ctx.lineTo(500, lastY);
 ctx.fill();
 ctx.stroke();
 ctx.closePath();
@@ -131,15 +142,8 @@ ctx.closePath();
  * Candles
  */
 var space = 6;
-var candles = ${JSON.stringify(this.toShow.candles)};
 var candleWidth = 500 / candles.length - space;
 
-var maxCandle = 0;
-var minCandle = 0;
-candles.forEach(el => {
-  maxCandle = maxCandle ? (maxCandle < el.high ? el.high : maxCandle) : el.high;
-  minCandle = minCandle ? (minCandle > el.low ? el.low : minCandle) : el.low;
-});
 var dPrice = maxCandle - minCandle;
 var priceScale = DRAW_BOTTOM / dPrice;
 
@@ -148,7 +152,7 @@ candles.forEach((el, i) => {
   ctx.strokeStyle = el.bull ? 'rgba(0, 255, 0, 1)' : 'rgba(255, 0, 0, 1)';
   ctx.fillStyle = el.bull ? 'rgba(0, 255, 0, 0.4)' : 'rgba(255, 0, 0, 0.4)';
 
-  var startX = 520 + i * (space + candleWidth) + space / 2;
+  var startX = 560 + i * (space + candleWidth) + space / 2;
   var centerX = startX + candleWidth / 2;
 
   ctx.moveTo(centerX, DRAW_BOTTOM - ((el.high - minCandle) * priceScale));
@@ -168,17 +172,31 @@ candles.forEach((el, i) => {
  * Captions
  */
  
-ctx.fillStyle = 'rgba(0, 0, 0, 1)';
-ctx.font = '16px sans';
+ctx.fillStyle = 'yellow';
+ctx.font = '13px monospace';
 
-ctx.fillText('vol ' + dSum.toFixed(2), 0, 20);
+ctx.fillText('vol ' + dSum.toFixed(2), 0, 10);
 
-ctx.fillText(startPrice.toFixed(2), 250 - 27, DRAW_BOTTOM + 10);
-ctx.fillText(buys.last().price.toFixed(2), 250 - wallPriceScale * dPriceBuy, DRAW_BOTTOM + 10);
-ctx.fillText(sells.last().price.toFixed(2), 250 + wallPriceScale * dPriceSell - 35 /** (dPriceSell / dPrice)*/, DRAW_BOTTOM + 10);
+//depth scale
+ctx.fillText(startPrice.toFixed(2), 500 - 57, DRAW_BOTTOM / 2);
+ctx.fillText(buys.last().price.toFixed(2), 500 - 57, DRAW_BOTTOM + 10);
+ctx.fillText(sells.last().price.toFixed(2), 500 - 57, 10);
 
-ctx.fillText(maxCandle.toFixed(2), 520, 20);
-ctx.fillText(minCandle.toFixed(2), 520, DRAW_BOTTOM + 10);
+//candles scale
+ctx.fillText(maxCandle.toFixed(2), 500, 10);
+ctx.fillText(minCandle.toFixed(2), 500, DRAW_BOTTOM + 10);
+
+//curr price
+ctx.strokeStyle = 'rgba(0, 125, 125, 1)';
+ctx.fillStyle = 'rgba(0, 125, 125, 1)';
+
+ctx.fillText(candles.last().close.toFixed(2), 500, priceY);
+ctx.beginPath();
+ctx.moveTo(1060, priceY);
+ctx.lineTo(560, priceY);
+ctx.stroke();
+ctx.closePath();
+
 
           setTimeout(function(){
             location.reload();
