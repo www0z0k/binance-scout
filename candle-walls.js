@@ -19,7 +19,7 @@ class CandlesAndWalls{
     this.port = port || 3000;
 
     this._candle = '1m';
-    this._candlesNum = 25;
+    this._candlesNum = 40;
 
     //Wall price limit? Max volume limit?
     // this._wallMaxDelta = 15;
