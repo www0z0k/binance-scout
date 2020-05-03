@@ -15,7 +15,7 @@ class CandlesAndWalls{
 
     this.pair = pair || 'BTCUSDT';
 
-    this.tickInterval = 4 * 1000;
+    this.tickInterval = 3 * 1000;
     this.port = port || 3000;
 
     this._candle = '1m';
@@ -51,7 +51,7 @@ class CandlesAndWalls{
                   </head>`;
       page += `<body>`;
       page += `<h5>${this.pair}</h5>`;
-      page += `<canvas id="canv" width="1000" height="700" style="border:1px solid blue;"></canvas>`;
+      page += `<canvas id="canv" width="1060" height="700" style="border:1px solid blue;"></canvas>`;
       page += `<script>
 Array.prototype.last = function(){
   return this[this.length - 1];
@@ -60,6 +60,8 @@ Array.prototype.last = function(){
 var canvas = document.getElementById("canv");
 var ctx = canvas.getContext('2d');
 ctx.clearRect(0, 0, 1000, 700);
+
+var DRAW_BOTTOM = 680;
 var buys = ${JSON.stringify(this.toShow.walls.buy)};
 var sells = ${JSON.stringify(this.toShow.walls.sell)};
 var startPrice = ${this.toShow.price};
@@ -73,13 +75,13 @@ var dSum = Math.max(buys.last().sum, sells.last().sum);
 
 var wallsCenterX = 250;
 var wallPriceScale = 250 / dPrice;
-var wallVolScale = 680 / dSum;
+var wallVolScale = DRAW_BOTTOM / dSum;
 
 //Delimiter
 ctx.beginPath();
 ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
-ctx.moveTo(500, 0);
-ctx.lineTo(500, 700);
+ctx.moveTo(520, 0);
+ctx.lineTo(520, 700);
 ctx.stroke();
 ctx.closePath();
 
@@ -91,15 +93,15 @@ ctx.lineWidth = 1;
 ctx.beginPath();
 ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
 ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
-ctx.moveTo(0, 680);
-ctx.moveTo(250, 680);
+ctx.moveTo(0, DRAW_BOTTOM);
+ctx.moveTo(250, DRAW_BOTTOM);
 var lastX = 0;
 for (var i = 0; i < buys.length; i++) {
   lastX = 250 - (startPrice - buys[i].price) * wallPriceScale;
-  var y = 680 - buys[i].sum * wallVolScale;
+  var y = DRAW_BOTTOM - buys[i].sum * wallVolScale;
   ctx.lineTo(lastX, y);
 }
-ctx.lineTo(lastX, 680);
+ctx.lineTo(lastX, DRAW_BOTTOM);
 ctx.fill();
 ctx.stroke();
 ctx.closePath();
@@ -111,14 +113,14 @@ ctx.closePath();
 ctx.beginPath();
 ctx.strokeStyle = 'rgba(0, 255, 0, 1)';
 ctx.fillStyle = 'rgba(0, 255, 0, 0.4)';
-ctx.moveTo(250, 680);
+ctx.moveTo(250, DRAW_BOTTOM);
 
 for (var i = 0; i < sells.length; i++) {
   lastX = 250 + (sells[i].price - startPrice) * wallPriceScale;
-  var y = 680 - sells[i].sum * wallVolScale;
+  var y = DRAW_BOTTOM - sells[i].sum * wallVolScale;
   ctx.lineTo(lastX, y);
 }
-ctx.lineTo(lastX, 680);
+ctx.lineTo(lastX, DRAW_BOTTOM);
 ctx.fill();
 ctx.stroke();
 ctx.closePath();
@@ -132,28 +134,29 @@ var space = 6;
 var candles = ${JSON.stringify(this.toShow.candles)};
 var candleWidth = 500 / candles.length - space;
 
-var maxCandle, minCandle;
+var maxCandle = 0;
+var minCandle = 0;
 candles.forEach(el => {
   maxCandle = maxCandle ? (maxCandle < el.high ? el.high : maxCandle) : el.high;
   minCandle = minCandle ? (minCandle > el.low ? el.low : minCandle) : el.low;
 });
 var dPrice = maxCandle - minCandle;
-var priceScale = 680 / dPrice;
+var priceScale = DRAW_BOTTOM / dPrice;
 
 candles.forEach((el, i) => {
   ctx.beginPath();
   ctx.strokeStyle = el.bull ? 'rgba(0, 255, 0, 1)' : 'rgba(255, 0, 0, 1)';
   ctx.fillStyle = el.bull ? 'rgba(0, 255, 0, 0.4)' : 'rgba(255, 0, 0, 0.4)';
 
-  var startX = 500 + i * (space + candleWidth) + space / 2;
+  var startX = 520 + i * (space + candleWidth) + space / 2;
   var centerX = startX + candleWidth / 2;
 
-  ctx.moveTo(centerX, 680 - ((el.high - minCandle) * priceScale));
-  ctx.lineTo(centerX, 680 - (el.bull ? (el.close - minCandle) * priceScale : (el.open - minCandle) * priceScale));
-  ctx.moveTo(centerX, 680 - (el.bull ? (el.open - minCandle) * priceScale : (el.close - minCandle) * priceScale));
-  ctx.lineTo(centerX, 680 - ((el.low - minCandle) * priceScale));
+  ctx.moveTo(centerX, DRAW_BOTTOM - ((el.high - minCandle) * priceScale));
+  ctx.lineTo(centerX, DRAW_BOTTOM - (el.bull ? (el.close - minCandle) * priceScale : (el.open - minCandle) * priceScale));
+  ctx.moveTo(centerX, DRAW_BOTTOM - (el.bull ? (el.open - minCandle) * priceScale : (el.close - minCandle) * priceScale));
+  ctx.lineTo(centerX, DRAW_BOTTOM - ((el.low - minCandle) * priceScale));
 
-  ctx.rect(startX, 680 - (el.bull ? (el.open - minCandle) * priceScale : (el.close - minCandle) * priceScale), candleWidth, -Math.abs(el.close - el.open) * priceScale);
+  ctx.rect(startX, DRAW_BOTTOM - (el.bull ? (el.open - minCandle) * priceScale : (el.close - minCandle) * priceScale), candleWidth, -Math.abs(el.close - el.open) * priceScale);
  
   ctx.fill();
   ctx.stroke();
@@ -170,12 +173,12 @@ ctx.font = '16px sans';
 
 ctx.fillText('vol ' + dSum.toFixed(2), 0, 20);
 
-ctx.fillText(startPrice.toFixed(2), 250 - 27, 690);
-ctx.fillText(buys.last().price.toFixed(2), 250 - wallPriceScale * dPriceBuy, 690);
-ctx.fillText(sells.last().price.toFixed(2), 250 + wallPriceScale * dPriceSell - 53, 690);
+ctx.fillText(startPrice.toFixed(2), 250 - 27, DRAW_BOTTOM + 10);
+ctx.fillText(buys.last().price.toFixed(2), 250 - wallPriceScale * dPriceBuy, DRAW_BOTTOM + 10);
+ctx.fillText(sells.last().price.toFixed(2), 250 + wallPriceScale * dPriceSell - 35 /** (dPriceSell / dPrice)*/, DRAW_BOTTOM + 10);
 
-ctx.fillText(maxCandle.toFixed(2), 500, 20);
-ctx.fillText(minCandle.toFixed(2), 500, 690);
+ctx.fillText(maxCandle.toFixed(2), 520, 20);
+ctx.fillText(minCandle.toFixed(2), 520, DRAW_BOTTOM + 10);
 
           setTimeout(function(){
             location.reload();
@@ -220,7 +223,6 @@ ctx.fillText(minCandle.toFixed(2), 500, 690);
         el.close = Number(arr[4]);
         el.volume = Number(arr[5]);
         el.bull = el.open < el.close;
-        // console.log(el);
         return el;
       });      
     }, {limit: this._candlesNum/*, endTime: Date.now()*/});
