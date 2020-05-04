@@ -85,7 +85,6 @@ var dSum = Math.max(buys.last().sum, sells.last().sum);
 var absMin = Math.min(sells[0].price, buys.last().price, minCandle)
 var absMax = Math.max(buys[0].price, sells.last().price, maxCandle)
 
-// var dPrice = Math.max(dPriceSell, dPriceBuy, maxCandle - minCandle);
 var dPrice = absMax - absMin;
 
 function getPriceY(pr){
@@ -100,48 +99,65 @@ var wallVolScale = 500 / dSum;
 
 //Delimiter
 ctx.beginPath();
-ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
+ctx.strokeStyle = 'rgba(180, 180, 180, 1)';
+ctx.lineWidth = 0.3;
 ctx.moveTo(500, 0);
 ctx.lineTo(500, 700);
+
+var scaleStep = 10;
+if(dPrice > 499){
+  scaleStep = 100;
+}else if(dPrice > 250){
+  scaleStep = 40;
+}
+
+for(var i = Math.ceil(absMin / 10) * 10; i < absMax; i += scaleStep){
+  ctx.moveTo(560, getPriceY(i));
+  ctx.lineTo(1060, getPriceY(i));
+  ctx.fillStyle = 'green';
+  ctx.font = '11px monospace';
+  ctx.fillText(i, 520, getPriceY(i) + 1);
+}
+
 ctx.stroke();
 ctx.closePath();
 
 ctx.lineWidth = 1;
 
 /*
- * Red / Left / Buy wall
+ * Red / Bottom / Buy wall
  */
 ctx.beginPath();
 ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
 ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
 ctx.moveTo(500, wallsCenterY);
-var lastY = 0;
+var lastBottomY = 0;
 for (var i = 0; i < buys.length; i++) {
-  lastY = wallsCenterY + (startPrice - buys[i].price) * wallPriceScale;
+  lastBottomY = wallsCenterY + (startPrice - buys[i].price) * wallPriceScale;
   var x = 500 - buys[i].sum * wallVolScale;
-  ctx.lineTo(x, lastY);
+  ctx.lineTo(x, lastBottomY);
 }
-ctx.lineTo(500, lastY);
+ctx.lineTo(500, lastBottomY);
 ctx.fill();
 ctx.stroke();
 ctx.closePath();
 
  
 /*
- * Green / Right / Sell wall
+ * Green / Top / Sell wall
  */
 ctx.beginPath();
 ctx.strokeStyle = 'rgba(0, 255, 0, 1)';
 ctx.fillStyle = 'rgba(0, 255, 0, 0.4)';
 ctx.moveTo(500, wallsCenterY);
 
-var lastY = 0;
+var lastTopY = 0;
 for (var i = 0; i < sells.length; i++) {
-  lastY = wallsCenterY - (sells[i].price - startPrice) * wallPriceScale;
+  lastTopY = wallsCenterY - (sells[i].price - startPrice) * wallPriceScale;
   var x = 500 - sells[i].sum * wallVolScale;
-  ctx.lineTo(x, lastY);
+  ctx.lineTo(x, lastTopY);
 }
-ctx.lineTo(500, lastY);
+ctx.lineTo(500, lastTopY);
 ctx.fill();
 ctx.stroke();
 ctx.closePath();
@@ -187,8 +203,8 @@ ctx.font = '13px monospace';
 ctx.fillText('vol ' + dSum.toFixed(2), 0, 10);
 
 //depth scale
-ctx.fillText(buys.last().price.toFixed(2), 500, getPriceY(buys.last().price) + 10);
-ctx.fillText(sells.last().price.toFixed(2), 500, getPriceY(sells.last().price) + 10);
+ctx.fillText(buys.last().price.toFixed(2), 500, lastBottomY + 10);
+ctx.fillText(sells.last().price.toFixed(2), 500, lastTopY + 10);
 
 //candles scale
 ctx.fillText(maxCandle.toFixed(2), 500, getPriceY(maxCandle) + 10);
