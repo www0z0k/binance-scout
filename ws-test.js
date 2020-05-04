@@ -6,7 +6,6 @@ const binance = new require('node-binance-api')(/*{
     }*/);
 
 binance.websockets.depth([toShow.pair], (depth) => {
-	// let {e:eventType, E:eventTime, s:symbol, u:updateId, b:bidDepth, a:askDepth} = depth;
 	let firstBid, firstAsk;
 
     let sumSell = 0;
@@ -31,6 +30,34 @@ binance.websockets.depth([toShow.pair], (depth) => {
     toShow.price = (Number(firstAsk) + Number(firstBid)) / 2;
 	socket && socket.send(`${JSON.stringify(toShow)}`)
 });
+
+/*binance.websockets.depthCache([toShow.pair], (s, depth) => {
+	let firstBid, firstAsk;
+	let bids = binance.sortBids(depth.bids);
+	let asks = binance.sortAsks(depth.asks);
+    let sumSell = 0;
+    toShow.walls.sell = [];
+    for(let k in asks){
+    	let price = Number(k);
+        firstAsk = firstAsk || price;
+        let res = {price: price, sum: sumSell + Number(asks[k])};
+        toShow.walls.sell.push(res);
+        sumSell += Number(asks[k]);
+    }
+
+    let sumBuy = 0;
+    toShow.walls.buy = [];
+    for(let k in bids){
+    	let price = Number(k);
+        firstBid = firstBid || price;
+        let res = {price: price, sum: sumBuy + Number(bids[k])};
+        toShow.walls.buy.push(res);
+        sumBuy += Number(bids[k]);
+    }
+    toShow.price = (Number(firstAsk) + Number(firstBid)) / 2;
+	socket && socket.send(`${JSON.stringify(toShow)}`)
+});*/
+
 
 binance.websockets.chart(toShow.pair, "1m", (symbol, interval, chart) => {
 	toShow.candles = [];

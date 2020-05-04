@@ -176,7 +176,7 @@ function drawAll(buys, sells, candles, startPrice, pair){
 
 
 // Create WebSocket connection.
-const socket = new WebSocket('ws://localhost:3003');
+const socket = new WebSocket('ws://151.248.114.228:3003');
 
 // Connection opened
 socket.addEventListener('open', function (event) {
@@ -188,6 +188,7 @@ socket.addEventListener('message', function (event) {
   let res = JSON.parse(event.data);
   // drawAll([{"price":8819.48,"sum":1}], [{"price":8819.48,"sum":1}], res.candles, res.price, res.pair);
   // drawAll(res.walls.buy, res.walls.sell, res.candles, res.price, res.pair);
+  window.document.title = res.price;
   drawAll(res.walls.buy, res.walls.sell, res.candles.slice(440), res.price, res.pair);
 });
 </script></body></html>
