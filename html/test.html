@@ -3,6 +3,9 @@
 <body style="background-color:#1D1D1D;">
 <h5 id="pair" style="color:#ffff00;"></h5>
 <canvas id="canv" width="1060" height="700" style="border:1px solid #ff00ff;"></canvas>
+<!-- <br> -->
+<!-- <button onclick="buy()">buy</button> -->
+<!-- <button onclick="sell()">sell</button> -->
 
 <script>
 Array.prototype.last = function(){
@@ -177,11 +180,11 @@ function drawAll(buys, sells, candles, startPrice, pair){
 
 // Create WebSocket connection.
 // const socket = new WebSocket('ws://127.0.0.1:3003');
-const socket = new WebSocket('ws://151.248.114.228:3003');
+const socket = new WebSocket(`ws://${location.hostname}:3003`);
 
 // Connection opened
 socket.addEventListener('open', function (event) {
-    socket.send('connected');
+    socket.send('connected 123');
 });
 
 // Listen for messages
@@ -201,9 +204,19 @@ socket.onclose = function(event) {
     // event.code is usually 1006 in this case
     console.log('[close] Connection died');
   }
+  location.reload();
 };
 
 socket.onerror = function(error) {
   console.log(`[error] ${error.message}`);
+  location.reload();
 };
+
+// function sell(){
+//   socket.send('sell');
+// }
+// function buy(){
+//   socket.send('buy');
+// }
+
 </script></body></html>

@@ -97,6 +97,6 @@ var socket;
 wss.on('connection', function (ws) {
 	socket = ws;
 	socket.on('message', function (message) {
-		console.log('received: %s', message)
+		console.log('received: %s', message);
 	})
 })
