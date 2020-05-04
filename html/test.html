@@ -1,0 +1,193 @@
+<html>
+<head></head>
+<body style="background-color:#1D1D1D;">
+<h5 id="pair" style="color:#ffff00;"></h5>
+<canvas id="canv" width="1060" height="700" style="border:1px solid #ff00ff;"></canvas>
+
+<script>
+Array.prototype.last = function(){
+  return this[this.length - 1];
+}
+
+function drawAll(buys, sells, candles, startPrice, pair){
+  var canvas = document.getElementById("canv");
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#1D1D1D';
+  ctx.rect(0, 0, 1060, 700);
+  ctx.fill();
+
+  var DRAW_BOTTOM = 680;
+
+  var maxCandle = 0;
+  var minCandle = 0;
+  candles.forEach(el => {
+    maxCandle = maxCandle ? (maxCandle < el.high ? el.high : maxCandle) : el.high;
+    minCandle = minCandle ? (minCandle > el.low ? el.low : minCandle) : el.low;
+  });
+
+
+  var dPriceBuy = buys[0].price - buys.last().price;
+  var dPriceSell = sells.last().price - sells[0].price;
+
+  var dSum = Math.max(buys.last().sum, sells.last().sum);
+
+  var absMin = Math.min(sells[0].price, buys.last().price, minCandle)
+  var absMax = Math.max(buys[0].price, sells.last().price, maxCandle)
+
+  var dPrice = absMax - absMin;
+
+  function getPriceY(pr){
+    return DRAW_BOTTOM - DRAW_BOTTOM * (pr - absMin) / (absMax - absMin);
+  }
+
+  var priceY = getPriceY(candles.last().close);
+
+  var wallsCenterY = priceY;
+  var wallPriceScale = DRAW_BOTTOM / dPrice;
+  var wallVolScale = 500 / dSum;
+
+  //Delimiter
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(180, 180, 180, 1)';
+  ctx.lineWidth = 0.3;
+  ctx.moveTo(500, 0);
+  ctx.lineTo(500, 700);
+
+  var scaleStep = 10;
+  if(dPrice > 499){
+    scaleStep = 100;
+  }else if(dPrice > 250){
+    scaleStep = 40;
+  }
+
+  for(var i = Math.ceil(absMin / 10) * 10; i < absMax; i += scaleStep){
+    ctx.moveTo(560, getPriceY(i));
+    ctx.lineTo(1060, getPriceY(i));
+    ctx.fillStyle = 'green';
+    ctx.font = '11px monospace';
+    ctx.fillText(i, 520, getPriceY(i) + 1);
+  }
+
+  ctx.stroke();
+  ctx.closePath();
+
+  ctx.lineWidth = 1;
+
+  /*
+   * Red / Bottom / Buy wall
+   */
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
+  ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+  ctx.moveTo(500, wallsCenterY);
+  var lastBottomY = 0;
+  for (var i = 0; i < buys.length; i++) {
+    lastBottomY = wallsCenterY + (startPrice - buys[i].price) * wallPriceScale;
+    var x = 500 - buys[i].sum * wallVolScale;
+    ctx.lineTo(x, lastBottomY);
+  }
+  ctx.lineTo(500, lastBottomY);
+  ctx.fill();
+  ctx.stroke();
+  ctx.closePath();
+
+   
+  /*
+   * Green / Top / Sell wall
+   */
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(0, 255, 0, 1)';
+  ctx.fillStyle = 'rgba(0, 255, 0, 0.4)';
+  ctx.moveTo(500, wallsCenterY);
+
+  var lastTopY = 0;
+  for (var i = 0; i < sells.length; i++) {
+    lastTopY = wallsCenterY - (sells[i].price - startPrice) * wallPriceScale;
+    var x = 500 - sells[i].sum * wallVolScale;
+    ctx.lineTo(x, lastTopY);
+  }
+  ctx.lineTo(500, lastTopY);
+  ctx.fill();
+  ctx.stroke();
+  ctx.closePath();
+
+
+   
+  /*
+   * Candles
+   */
+  var space = 6;
+  var candleWidth = 500 / candles.length - space;
+
+  var priceScale = DRAW_BOTTOM / dPrice;
+
+  candles.forEach((el, i) => {
+    ctx.beginPath();
+    ctx.strokeStyle = el.bull ? 'rgba(0, 255, 0, 1)' : 'rgba(255, 0, 0, 1)';
+    ctx.fillStyle = el.bull ? 'rgba(0, 255, 0, 0.4)' : 'rgba(255, 0, 0, 0.4)';
+
+    var startX = 560 + i * (space + candleWidth) + space / 2;
+    var centerX = startX + candleWidth / 2;
+
+    ctx.moveTo(centerX, DRAW_BOTTOM - ((el.high - absMin) * priceScale));
+    ctx.lineTo(centerX, DRAW_BOTTOM - (el.bull ? (el.close - absMin) * priceScale : (el.open - absMin) * priceScale));
+    ctx.moveTo(centerX, DRAW_BOTTOM - (el.bull ? (el.open - absMin) * priceScale : (el.close - absMin) * priceScale));
+    ctx.lineTo(centerX, DRAW_BOTTOM - ((el.low - absMin) * priceScale));
+
+    ctx.rect(startX, DRAW_BOTTOM - (el.bull ? (el.open - absMin) * priceScale : (el.close - absMin) * priceScale), candleWidth, -Math.abs(el.close - el.open) * priceScale);
+   
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+  });
+   
+
+  /*
+   * Captions
+   */
+   
+  ctx.fillStyle = 'yellow';
+  ctx.font = '13px monospace';
+
+  ctx.fillText('vol ' + dSum.toFixed(2), 0, 10);
+
+  //depth scale
+  ctx.fillText(buys.last().price.toFixed(2), 500, lastBottomY + 10);
+  ctx.fillText(sells.last().price.toFixed(2), 500, lastTopY + 10);
+
+  //candles scale
+  ctx.fillText(maxCandle.toFixed(2), 500, getPriceY(maxCandle) + 10);
+  ctx.fillText(minCandle.toFixed(2), 500, getPriceY(minCandle) + 10);
+
+  //curr price
+  ctx.strokeStyle = 'rgba(0, 125, 125, 1)';
+  ctx.fillStyle = 'rgba(0, 125, 125, 1)';
+
+  ctx.fillText(candles.last().close.toFixed(2), 500, priceY + 5);
+  ctx.beginPath();
+  ctx.moveTo(1060, priceY);
+  ctx.lineTo(560, priceY);
+  ctx.stroke();
+  ctx.closePath();
+
+  document.getElementById('pair').innerHTML = pair;
+}
+
+
+
+// Create WebSocket connection.
+const socket = new WebSocket('ws://localhost:3003');
+
+// Connection opened
+socket.addEventListener('open', function (event) {
+    socket.send('connected');
+});
+
+// Listen for messages
+socket.addEventListener('message', function (event) {
+  let res = JSON.parse(event.data);
+  // drawAll([{"price":8819.48,"sum":1}], [{"price":8819.48,"sum":1}], res.candles, res.price, res.pair);
+  // drawAll(res.walls.buy, res.walls.sell, res.candles, res.price, res.pair);
+  drawAll(res.walls.buy, res.walls.sell, res.candles.slice(440), res.price, res.pair);
+});
+</script></body></html>
