@@ -79,13 +79,15 @@ candles.forEach(el => {
 
 var dPriceBuy = buys[0].price - buys.last().price;
 var dPriceSell = sells.last().price - sells[0].price;
-var dPrice = Math.max(dPriceSell, dPriceBuy);
-var dPrice = Math.max(dPrice, maxCandle - minCandle);
 
 var dSum = Math.max(buys.last().sum, sells.last().sum);
 
 var absMin = Math.min(sells[0].price, buys.last().price, minCandle)
 var absMax = Math.max(buys[0].price, sells.last().price, maxCandle)
+
+// var dPrice = Math.max(dPriceSell, dPriceBuy, maxCandle - minCandle);
+var dPrice = absMax - absMin;
+
 function getPriceY(pr){
   return DRAW_BOTTOM - DRAW_BOTTOM * (pr - absMin) / (absMax - absMin);
 }
@@ -162,12 +164,12 @@ candles.forEach((el, i) => {
   var startX = 560 + i * (space + candleWidth) + space / 2;
   var centerX = startX + candleWidth / 2;
 
-  ctx.moveTo(centerX, DRAW_BOTTOM - ((el.high - minCandle) * priceScale));
-  ctx.lineTo(centerX, DRAW_BOTTOM - (el.bull ? (el.close - minCandle) * priceScale : (el.open - minCandle) * priceScale));
-  ctx.moveTo(centerX, DRAW_BOTTOM - (el.bull ? (el.open - minCandle) * priceScale : (el.close - minCandle) * priceScale));
-  ctx.lineTo(centerX, DRAW_BOTTOM - ((el.low - minCandle) * priceScale));
+  ctx.moveTo(centerX, DRAW_BOTTOM - ((el.high - absMin) * priceScale));
+  ctx.lineTo(centerX, DRAW_BOTTOM - (el.bull ? (el.close - absMin) * priceScale : (el.open - absMin) * priceScale));
+  ctx.moveTo(centerX, DRAW_BOTTOM - (el.bull ? (el.open - absMin) * priceScale : (el.close - absMin) * priceScale));
+  ctx.lineTo(centerX, DRAW_BOTTOM - ((el.low - absMin) * priceScale));
 
-  ctx.rect(startX, DRAW_BOTTOM - (el.bull ? (el.open - minCandle) * priceScale : (el.close - minCandle) * priceScale), candleWidth, -Math.abs(el.close - el.open) * priceScale);
+  ctx.rect(startX, DRAW_BOTTOM - (el.bull ? (el.open - absMin) * priceScale : (el.close - absMin) * priceScale), candleWidth, -Math.abs(el.close - el.open) * priceScale);
  
   ctx.fill();
   ctx.stroke();
