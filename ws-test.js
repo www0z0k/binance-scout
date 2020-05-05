@@ -61,8 +61,8 @@ Number.prototype.toFixed = function(len){
 var binance;
 const start = (key, secret) => {
 	binance = new require('node-binance-api')({
-	      APIKEY: key,
-	      APISECRET: secret
+	      APIKEY: key || '',
+	      APISECRET: secret || ''
 	    });
 
 	binance.websockets.depthCache([toShow.pair], (s, depth) => {
