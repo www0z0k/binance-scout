@@ -4,6 +4,10 @@
   body{
     color:#ffff00;
     background-color:#1D1D1D;
+    font-family: monospace;
+  }
+  .detect {
+    width: 13px;
   }
   input[type=number] {
     width: 74px;
@@ -18,9 +22,16 @@
 </head>
 <body>
 <span id="pair"></span>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  =(^-_-^)=&nbsp;
+  candles <input type="number" id="candles-count" class="detect" value="10">
+  threshold <input type="number" id="candles-threshold" class="detect" value="2">
+  min <input type="number" id="candles-min" class="detect" value="3">
+  wall size <input type="number" id="wall-size" class="detect" value="20">
+  --> <span id="detect-result"></span>
 <span id="connection">
   <input type="text" id="api" placeholder="API KEY"><input type="text" id="secret" placeholder="SECRET">
-  <button onclick="sendConnect()">connect</button>
+  <button onclick="sendConnect()">connect</button> 
 </span>
 <canvas id="canv" width="1060" height="700" style="display: none; border:1px solid #ff00ff;"></canvas>
 <br>
@@ -153,7 +164,6 @@ function drawAll(buys, sells, candles, startPrice, pair){
   ctx.moveTo(500, wallsCenterY);
   var lastBottomY = 0;
   for (var i = 0; i < buys.length; i++) {
-    // lastBottomY = wallsCenterY + (startPrice - buys[i].price) * wallPriceScale;
     lastBottomY = getPriceY(buys[i].price);
     var x = 500 - buys[i].sum * wallVolScale;
     ctx.lineTo(x, lastBottomY);
@@ -174,7 +184,6 @@ function drawAll(buys, sells, candles, startPrice, pair){
 
   var lastTopY = 0;
   for (var i = 0; i < sells.length; i++) {
-    // lastTopY = wallsCenterY - (sells[i].price - startPrice) * wallPriceScale;
     lastTopY = getPriceY(sells[i].price);
     var x = 500 - sells[i].sum * wallVolScale;
     ctx.lineTo(x, lastTopY);
@@ -246,6 +255,42 @@ function drawAll(buys, sells, candles, startPrice, pair){
   document.getElementById('pair').innerHTML = pair;
 }
 
+
+/*
+ * Detector test
+ */
+function detectTest(buys, sells, candles, price){
+  let count = valByID('candles-count');
+  let min = valByID('candles-min');
+  let threshold = valByID('candles-threshold');
+  let wall = valByID('wall-size');
+
+  let c = candles.slice(candles.length - count);
+  c.sort((a, b) => {return b.high - a.high});
+  let passed = true;
+  let fits = [];
+  for (var i = 0; i < min; i++) {
+    if(c[0].high - c[i].high > threshold){
+      console.log(`${c[0].high} - ${c[i].high} > ${threshold}`);
+      getByID('detect-result').innerHTML = 'no (candles)';
+      return;
+    }
+    fits.push(c[i].high);
+  }
+  
+  let avg = fits.reduce((a,b) => a + b, 0) / fits.length;
+  console.log(avg);
+  for (var i = 0; i < sells.length; i++) {
+    if(sells[i].price > avg && sells[i].sum < wall){
+      console.log(`${sells[i].price} > ${avg} && ${sells[i].sum} < ${wall}`);
+      getByID('detect-result').innerHTML = 'no (walls)';
+      return;
+    }
+  }
+  getByID('detect-result').innerHTML = `should be ${avg}`;
+  console.log(`should be it @ ${avg}`);
+}
+
 /*
  * Helpers
  */
@@ -269,6 +314,8 @@ socket.addEventListener('message', function (event) {
   let res = JSON.parse(event.data);
   window.document.title = res.price.toFixed(2);
   drawAll(res.walls.buy, res.walls.sell, res.candles.slice(440), res.price, res.pair);
+  
+  detectTest(res.walls.buy, res.walls.sell, res.candles.slice(440), res.price);
 
   getByID('b-price').value = res.price + 1;
   getByID('s-price').value = res.price - 1;
