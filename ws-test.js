@@ -64,6 +64,15 @@ const start = (key, secret) => {
 	      APIKEY: key || '',
 	      APISECRET: secret || ''
 	    });
+	if(key && secret){
+		setInterval(() => {
+			if(binance){
+				getBalance();
+				// getOrders();
+				getOrdersAll();
+			}
+		}, 2500)
+	}
 
 	binance.websockets.depthCache([toShow.pair], (s, depth) => {
 		let firstBid, firstAsk;
@@ -110,14 +119,6 @@ const start = (key, secret) => {
 		socket && socket.send(`${JSON.stringify(toShow)}`);
 	});
 }
-
-setInterval(() => {
-	if(binance){
-		getBalance();
-		// getOrders();
-		getOrdersAll();
-	}
-}, 2500)
 
 const getBalance = () => {
 	binance && binance.balance((error, balances) => {
