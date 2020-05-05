@@ -39,11 +39,7 @@ wss.on('connection', function (ws) {
 					break;
 					case 'sell':
 						console.log(message);
-						try{
-							binance.sell(toShow.pair, message.amount, message.price);
-						}catch(er){
-							console.log(er);
-						}
+						binance.sell(toShow.pair, message.amount, message.price);
 					break;
 					case 'buy':
 						console.log(message);

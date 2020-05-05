@@ -153,7 +153,8 @@ function drawAll(buys, sells, candles, startPrice, pair){
   ctx.moveTo(500, wallsCenterY);
   var lastBottomY = 0;
   for (var i = 0; i < buys.length; i++) {
-    lastBottomY = wallsCenterY + (startPrice - buys[i].price) * wallPriceScale;
+    // lastBottomY = wallsCenterY + (startPrice - buys[i].price) * wallPriceScale;
+    lastBottomY = getPriceY(buys[i].price);
     var x = 500 - buys[i].sum * wallVolScale;
     ctx.lineTo(x, lastBottomY);
   }
@@ -173,7 +174,8 @@ function drawAll(buys, sells, candles, startPrice, pair){
 
   var lastTopY = 0;
   for (var i = 0; i < sells.length; i++) {
-    lastTopY = wallsCenterY - (sells[i].price - startPrice) * wallPriceScale;
+    // lastTopY = wallsCenterY - (sells[i].price - startPrice) * wallPriceScale;
+    lastTopY = getPriceY(sells[i].price);
     var x = 500 - sells[i].sum * wallVolScale;
     ctx.lineTo(x, lastTopY);
   }
@@ -305,7 +307,7 @@ socket.addEventListener('message', function (event) {
     getByID('orders-history').innerHTML = '';
     res.ordersOld.reverse();
     for (var i = 0; i < res.ordersOld.length; i++) {
-      getByID('orders-history').innerHTML += res.ordersOld[i].side + ', ' + res.ordersOld[i].origQty + '[' + res.ordersOld[i].cummulativeQuoteQty + '], price' + res.ordersOld[i].price.toFixed(2) + '<br>';
+      getByID('orders-history').innerHTML += res.ordersOld[i].side + ', ' + res.ordersOld[i].origQty + '[' + res.ordersOld[i].cummulativeQuoteQty + '], price ' + res.ordersOld[i].price.toFixed(2) + '<br>';
     }
   }
 });
