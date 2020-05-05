@@ -77,8 +77,8 @@ const start = (key, secret) => {
 	binance.websockets.depthCache([toShow.pair], (s, depth) => {
 		let firstBid, firstAsk;
 
-		let bids = binance.sortBids(depth.bids, 150);
-		let asks = binance.sortAsks(depth.asks, 150);
+		let bids = binance.sortBids(depth.bids, 200);
+		let asks = binance.sortAsks(depth.asks, 200);
 	
 	    let sumSell = 0;
 	    toShow.walls.sell = [];
