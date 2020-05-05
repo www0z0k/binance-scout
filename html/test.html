@@ -1,19 +1,89 @@
 <html>
-<head></head>
-<body style="background-color:#1D1D1D;">
-<h5 id="pair" style="color:#ffff00;"></h5>
-<canvas id="canv" width="1060" height="700" style="border:1px solid #ff00ff;"></canvas>
-<!-- <br> -->
-<!-- <button onclick="buy()">buy</button> -->
-<!-- <button onclick="sell()">sell</button> -->
+<head>
+<style type="text/css">
+  body{
+    color:#ffff00;
+    background-color:#1D1D1D;
+  }
+  input[type=number] {
+    width: 74px;
+  }
+  td{
+    vertical-align:top;
+  }
+  .right{
+    /*text-align: right;*/
+  }
+</style>
+</head>
+<body>
+<span id="pair"></span>
+<span id="connection">
+  <input type="text" id="api" placeholder="API KEY"><input type="text" id="secret" placeholder="SECRET">
+  <button onclick="sendConnect()">connect</button>
+</span>
+<canvas id="canv" width="1060" height="700" style="display: none; border:1px solid #ff00ff;"></canvas>
+<br>
+<table style="width: 100%">
+  <tr>
+    <td>
+      <span id="balance"></span><br>
+      <div id="buyBtns">
+        BUY <input type="number" id="b-price"><span id="b-btns"></span><input type="checkbox" id="use-custom-buy"><input type="number" id="b-price-opt"><br>
+        SELL <input type="number" id="s-price"><span id="s-btns"></span><input type="checkbox" id="use-custom-sell"><input type="number" id="s-price-opt">
+      </div>
+      <span id="orders"></span>      
+    </td>
+    <td class="right">
+      <span id="orders-history"></span>      
+    </td>
+  </tr>  
+</table>
 
 <script>
+/*
+ * Helpers
+ */
+Number.prototype.toFixed = function(len){
+  var parts = this.toString().split('.');
+  return parts.length == 1 ? parts[0] : (parts[0] + '.' + parts[1].slice(0, len));
+}
 Array.prototype.last = function(){
   return this[this.length - 1];
 }
+HTMLElement.prototype.hide = function(){
+  this.style.display = 'none';
+}
+HTMLElement.prototype.show = function(){
+  this.style.display = 'block';
+}
+HTMLElement.prototype.showInline = function(){
+  this.style.display = 'inline';
+}
+function getByID(id){
+  return document.getElementById(id);
+}
+function valByID(id){
+  return document.getElementById(id).value;
+}
+
+/*
+ * Init
+ */
+getByID('buyBtns').hide();
+getByID('connection').hide();
+
+
+/*
+ * Main display
+ */
 
 function drawAll(buys, sells, candles, startPrice, pair){
+  if(!buys.length || !sells.length){
+    return
+  }
   var canvas = document.getElementById("canv");
+  canvas.show();
   var ctx = canvas.getContext('2d');
   ctx.fillStyle = '#1D1D1D';
   ctx.rect(0, 0, 1060, 700);
@@ -27,8 +97,6 @@ function drawAll(buys, sells, candles, startPrice, pair){
     maxCandle = maxCandle ? (maxCandle < el.high ? el.high : maxCandle) : el.high;
     minCandle = minCandle ? (minCandle > el.low ? el.low : minCandle) : el.low;
   });
-
-
   var dPriceBuy = buys[0].price - buys.last().price;
   var dPriceSell = sells.last().price - sells[0].price;
 
@@ -176,7 +244,13 @@ function drawAll(buys, sells, candles, startPrice, pair){
   document.getElementById('pair').innerHTML = pair;
 }
 
-
+/*
+ * Helpers
+ */
+function createSellButton(sum, part, buy, precision, fee){
+  let amount = Number((sum * (part - fee)).toFixed(precision));
+  return `<button onclick="${buy ? 'buy' : 'sell'}(${amount})">${amount}</button>`;
+}
 
 // Create WebSocket connection.
 // const socket = new WebSocket('ws://127.0.0.1:3003');
@@ -184,16 +258,56 @@ const socket = new WebSocket(`ws://${location.hostname}:3003`);
 
 // Connection opened
 socket.addEventListener('open', function (event) {
-    socket.send('connected 123');
+    socket.send('connected');
+    getByID('connection').show();
 });
 
 // Listen for messages
 socket.addEventListener('message', function (event) {
   let res = JSON.parse(event.data);
-  // drawAll([{"price":8819.48,"sum":1}], [{"price":8819.48,"sum":1}], res.candles, res.price, res.pair);
-  // drawAll(res.walls.buy, res.walls.sell, res.candles, res.price, res.pair);
   window.document.title = res.price.toFixed(2);
   drawAll(res.walls.buy, res.walls.sell, res.candles.slice(440), res.price, res.pair);
+
+  getByID('b-price').value = res.price + 1;
+  getByID('s-price').value = res.price - 1;
+
+  if(res.balances){
+    getByID('buyBtns').show();
+    getByID('balance').innerHTML = '';
+    for(let c in res.balances){
+      let avail = res.balances[c].avail;
+      getByID('balance').innerHTML += c + ' : avail ' + avail + ',  order ' + res.balances[c].ordered + '<br>';
+      if(c == 'BTC'){
+        getByID('s-btns').innerHTML = createSellButton(avail, 0.25, false, 6, 0) 
+                                        + createSellButton(avail, 0.5, false, 6, 0) 
+                                        + createSellButton(avail, 0.75, false, 6, 0) 
+                                        + createSellButton(avail, 1, false, 6, 0);
+      }else if(c == 'USDT'){
+        getByID('b-btns').innerHTML = createSellButton(avail, 0.25, true, 2, 0) 
+                                        + createSellButton(avail, 0.5, true, 2, 0) 
+                                        + createSellButton(avail, 0.75, true, 2, 0) 
+                                        + createSellButton(avail, 1, true, 2, 0);
+      }
+    }
+  }
+  if(res.orders){
+    getByID('orders').innerHTML = '';
+    for (var i = 0; i < res.orders.sell.length; i++) {
+      let order = res.orders.sell[i];
+      getByID('orders').innerHTML += ' SELL : ' + order.origQty + ' [ ' + (order.price * order.origQty).toFixed(3) + ' ] | price : ' + order.price.toFixed(2) + ' ID: ' + order.orderId + '<button onclick="cancelOrder(' + order.orderId +')">x</button><br>'; 
+    }
+    for (var i = 0; i < res.orders.buy.length; i++) {
+      let order = res.orders.buy[i];
+      getByID('orders').innerHTML += ' BUY : ' + order.origQty + ' [ ' + (order.price * order.origQty).toFixed(3) + ' ] | price : ' + order.price.toFixed(2) + ' ID: ' + order.orderId + '<button onclick="cancelOrder(' + order.orderId +')">x</button><br>'; 
+    }
+  }
+  if(res.ordersOld){
+    getByID('orders-history').innerHTML = '';
+    res.ordersOld.reverse();
+    for (var i = 0; i < res.ordersOld.length; i++) {
+      getByID('orders-history').innerHTML += res.ordersOld[i].side + ', ' + res.ordersOld[i].origQty + '[' + res.ordersOld[i].cummulativeQuoteQty + '], price' + res.ordersOld[i].price.toFixed(2) + '<br>';
+    }
+  }
 });
 
 socket.onclose = function(event) {
@@ -212,11 +326,38 @@ socket.onerror = function(error) {
   location.reload();
 };
 
-// function sell(){
-//   socket.send('sell');
-// }
-// function buy(){
-//   socket.send('buy');
-// }
+/*
+ * Custom handlers
+ */
+if(document.cookie){
+  let k = document.cookie.split('keys=')[1];
+  getByID('api').value = k.split('|')[0];
+  getByID('secret').value = k.split('|')[1];
+}
+
+function sendConnect(){
+  document.cookie = 'keys=' + valByID('api') + '|' + valByID('secret');
+  socket.send(`{"action": "login", "key":"${valByID('api')}", "secret":"${valByID('secret')}"}`);
+}
+function cancelOrder(id){
+  socket.send('{"action": "cancelOrder", "id": ' + id + '}');
+}
+function sell(amount){
+  let price = (getByID('use-custom-sell').checked && !isNaN(valByID('s-price-opt'))) ? Number(valByID('s-price-opt')) : Number(valByID('s-price'));
+  socket.send(JSON.stringify({
+    "action": "sell",
+    amount,
+    price: Number(price.toFixed(2))
+  }));
+}
+function buy(amount){
+  //NB: buy amount in USDT, convert it!
+  let price = (getByID('use-custom-buy').checked && !isNaN(valByID('b-price-opt'))) ? Number(valByID('b-price-opt')) : Number(valByID('b-price'));
+  socket.send(JSON.stringify({
+    "action": "buy",
+    amount: Number((amount / price).toFixed(6)),
+    price: Number(price.toFixed(2))
+  }));
+}
 
 </script></body></html>
