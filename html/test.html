@@ -15,8 +15,8 @@
   td{
     vertical-align:top;
   }
-  .right{
-    /*text-align: right;*/
+  canvas{
+    /*position: absolute;*/
   }
 </style>
 </head>
@@ -35,7 +35,10 @@
   depth <input type="number" step="10" value="200" id="depth-lim" onchange="setDepth()">
   candles <input type="number" value="60" id="candles-lim">
 </span>
-<canvas id="canv" width="1060" height="550" style="display: none; border:1px solid #ff00ff;"></canvas>
+<!-- <div style="position: relative;"> -->
+  <canvas id="canv" width="1060" height="550" style="display: none; border:1px solid #ff00ff;" onmousemove="canvasMove(event)" onmouseout="clearCrosshair()"></canvas>
+  <canvas id="canv2" width="1060" height="550" style="display: none; border:1px solid #ff00ff; z-index:2;margin-top:-550px;" onmousemove="canvasMove(event)" onmouseout="clearCrosshair()"></canvas>
+<!-- </div> -->
 <br>
 <table style="width: 1060px;">
   <tr>
@@ -47,7 +50,7 @@
       </div>
       <span id="orders"></span>      
     </td>
-    <td class="right">
+    <td>
       <span id="orders-history"></span>      
     </td>
   </tr>  
@@ -87,24 +90,52 @@ getByID('buyBtns').hide();
 getByID('connection').hide();
 
 
-/*
- * Main display
- */
-
 var BOTTOM_OFFSET = 100;
 var DELIMITER_X = 400;
 var SCALE_WIDTH = 60;
 
+var canvas = document.getElementById("canv");
+var canvasTop = document.getElementById("canv2");
+var ctx = canvas.getContext('2d');
+var WIDTH = canvas.width;
+var HEIGHT = canvas.height;
+var DRAW_BOTTOM = HEIGHT - BOTTOM_OFFSET;
+canvasTop.show();
+
+/*
+ * Crosshair
+ */
+var CROSSHAIR = {x: -1, y: -1};
+function canvasMove(e){
+  CROSSHAIR = {x: e.offsetX, y: e.offsetY};
+  let ctx = canvasTop.getContext('2d');
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  if(CROSSHAIR.x > -1 && CROSSHAIR.y > -1){
+    ctx.beginPath();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#ffffff';
+    ctx.moveTo(0, CROSSHAIR.y);
+    ctx.lineTo(WIDTH, CROSSHAIR.y);
+    ctx.moveTo(CROSSHAIR.x, 0);
+    ctx.lineTo(CROSSHAIR.x, HEIGHT);
+    ctx.stroke();
+    ctx.closePath();
+  }
+}
+
+function clearCrosshair(){
+  CROSSHAIR = {x: -1, y: -1};
+  let ctx = canvasTop.getContext('2d');
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+}
+/*
+ * Main display
+ */
 function drawAll(buys, sells, candles, startPrice, pair){
   if(!buys.length || !sells.length){
     return
   }
-  var canvas = document.getElementById("canv");
   canvas.show();
-  var ctx = canvas.getContext('2d');
-  var WIDTH = canvas.width;
-  var HEIGHT = canvas.height;
-  var DRAW_BOTTOM = HEIGHT - BOTTOM_OFFSET;
 
   ctx.beginPath();
   ctx.fillStyle = '#1D1D1D';

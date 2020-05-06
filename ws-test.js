@@ -116,6 +116,7 @@ const start = (key, secret) => {
 			el.low = Number(chart[k].low);
 			el.close = Number(chart[k].close);
 			el.volume = Number(chart[k].volume);
+			el.time = Number(k);
 			el.bull = el.open < el.close;
 			toShow.candles.push(el);
 		}
