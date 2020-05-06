@@ -33,7 +33,7 @@
   <input type="text" id="api" placeholder="API KEY"><input type="text" id="secret" placeholder="SECRET">
   <button onclick="sendConnect()">connect</button> 
 </span>
-<canvas id="canv" width="1060" height="700" style="display: none; border:1px solid #ff00ff;"></canvas>
+<canvas id="canv" width="1060" height="550" style="display: none; border:1px solid #ff00ff;"></canvas>
 <br>
 <table style="width: 100%">
   <tr>
@@ -89,6 +89,10 @@ getByID('connection').hide();
  * Main display
  */
 
+var BOTTOM_OFFSET = 150;
+var DELIMITER_X = 400;
+var SCALE_WIDTH = 60;
+
 function drawAll(buys, sells, candles, startPrice, pair){
   if(!buys.length || !sells.length){
     return
@@ -96,17 +100,29 @@ function drawAll(buys, sells, candles, startPrice, pair){
   var canvas = document.getElementById("canv");
   canvas.show();
   var ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#1D1D1D';
-  ctx.rect(0, 0, 1060, 700);
-  ctx.fill();
+  var WIDTH = canvas.width;
+  var HEIGHT = canvas.height;
+  var DRAW_BOTTOM = HEIGHT - BOTTOM_OFFSET;
 
-  var DRAW_BOTTOM = 680;
+  ctx.beginPath();
+  ctx.fillStyle = '#1D1D1D';
+  ctx.rect(0, 0, WIDTH, HEIGHT);
+  ctx.fill();
+  ctx.closePath();
+  ctx.beginPath();
+  ctx.fillStyle = '#2D2D2D';
+  ctx.rect(0, DRAW_BOTTOM + 5, WIDTH, HEIGHT);
+  ctx.fill();
+  ctx.closePath();
+
 
   var maxCandle = 0;
   var minCandle = 0;
+  var maxVolume = 0;
   candles.forEach(el => {
     maxCandle = maxCandle ? (maxCandle < el.high ? el.high : maxCandle) : el.high;
     minCandle = minCandle ? (minCandle > el.low ? el.low : minCandle) : el.low;
+    maxVolume = maxVolume < el.volume ? el.volume : maxVolume;
   });
   var dPriceBuy = buys[0].price - buys.last().price;
   var dPriceSell = sells.last().price - sells[0].price;
@@ -126,14 +142,14 @@ function drawAll(buys, sells, candles, startPrice, pair){
 
   var wallsCenterY = priceY;
   var wallPriceScale = DRAW_BOTTOM / dPrice;
-  var wallVolScale = 500 / dSum;
+  var wallVolScale = DELIMITER_X / dSum;
 
   //Delimiter
   ctx.beginPath();
   ctx.strokeStyle = 'rgba(180, 180, 180, 1)';
   ctx.lineWidth = 0.3;
-  ctx.moveTo(500, 0);
-  ctx.lineTo(500, 700);
+  ctx.moveTo(DELIMITER_X, 0);
+  ctx.lineTo(DELIMITER_X, HEIGHT);
 
   var scaleStep = 10;
   if(dPrice > 499){
@@ -143,11 +159,11 @@ function drawAll(buys, sells, candles, startPrice, pair){
   }
 
   for(var i = Math.ceil(absMin / 10) * 10; i < absMax; i += scaleStep){
-    ctx.moveTo(560, getPriceY(i));
-    ctx.lineTo(1060, getPriceY(i));
+    ctx.moveTo(DELIMITER_X + SCALE_WIDTH, getPriceY(i));
+    ctx.lineTo(WIDTH, getPriceY(i));
     ctx.fillStyle = 'green';
     ctx.font = '11px monospace';
-    ctx.fillText(i, 520, getPriceY(i) + 1);
+    ctx.fillText(i, DELIMITER_X + 20, getPriceY(i) + 1);
   }
 
   ctx.stroke();
@@ -161,14 +177,14 @@ function drawAll(buys, sells, candles, startPrice, pair){
   ctx.beginPath();
   ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
   ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
-  ctx.moveTo(500, wallsCenterY);
+  ctx.moveTo(DELIMITER_X, wallsCenterY);
   var lastBottomY = 0;
   for (var i = 0; i < buys.length; i++) {
     lastBottomY = getPriceY(buys[i].price);
-    var x = 500 - buys[i].sum * wallVolScale;
+    var x = DELIMITER_X - buys[i].sum * wallVolScale;
     ctx.lineTo(x, lastBottomY);
   }
-  ctx.lineTo(500, lastBottomY);
+  ctx.lineTo(DELIMITER_X, lastBottomY);
   ctx.fill();
   ctx.stroke();
   ctx.closePath();
@@ -180,15 +196,15 @@ function drawAll(buys, sells, candles, startPrice, pair){
   ctx.beginPath();
   ctx.strokeStyle = 'rgba(0, 255, 0, 1)';
   ctx.fillStyle = 'rgba(0, 255, 0, 0.4)';
-  ctx.moveTo(500, wallsCenterY);
+  ctx.moveTo(DELIMITER_X, wallsCenterY);
 
   var lastTopY = 0;
   for (var i = 0; i < sells.length; i++) {
     lastTopY = getPriceY(sells[i].price);
-    var x = 500 - sells[i].sum * wallVolScale;
+    var x = DELIMITER_X - sells[i].sum * wallVolScale;
     ctx.lineTo(x, lastTopY);
   }
-  ctx.lineTo(500, lastTopY);
+  ctx.lineTo(DELIMITER_X, lastTopY);
   ctx.fill();
   ctx.stroke();
   ctx.closePath();
@@ -199,7 +215,7 @@ function drawAll(buys, sells, candles, startPrice, pair){
    * Candles
    */
   var space = 6;
-  var candleWidth = 500 / candles.length - space;
+  var candleWidth = (WIDTH - SCALE_WIDTH - DELIMITER_X) / candles.length - space;
 
   var priceScale = DRAW_BOTTOM / dPrice;
 
@@ -208,16 +224,18 @@ function drawAll(buys, sells, candles, startPrice, pair){
     ctx.strokeStyle = el.bull ? 'rgba(0, 255, 0, 1)' : 'rgba(255, 0, 0, 1)';
     ctx.fillStyle = el.bull ? 'rgba(0, 255, 0, 0.4)' : 'rgba(255, 0, 0, 0.4)';
 
-    var startX = 560 + i * (space + candleWidth) + space / 2;
+    var startX = DELIMITER_X + SCALE_WIDTH + i * (space + candleWidth) + space / 2;
     var centerX = startX + candleWidth / 2;
 
-    ctx.moveTo(centerX, DRAW_BOTTOM - ((el.high - absMin) * priceScale));
-    ctx.lineTo(centerX, DRAW_BOTTOM - (el.bull ? (el.close - absMin) * priceScale : (el.open - absMin) * priceScale));
-    ctx.moveTo(centerX, DRAW_BOTTOM - (el.bull ? (el.open - absMin) * priceScale : (el.close - absMin) * priceScale));
-    ctx.lineTo(centerX, DRAW_BOTTOM - ((el.low - absMin) * priceScale));
+    ctx.moveTo(centerX, getPriceY(el.high));
+    ctx.lineTo(centerX, el.bull ? getPriceY(el.close) : getPriceY(el.open));
+    ctx.moveTo(centerX, el.bull ? getPriceY(el.open) : getPriceY(el.close));
+    ctx.lineTo(centerX, getPriceY(el.low));
 
-    ctx.rect(startX, DRAW_BOTTOM - (el.bull ? (el.open - absMin) * priceScale : (el.close - absMin) * priceScale), candleWidth, -Math.abs(el.close - el.open) * priceScale);
-   
+    ctx.rect(startX, getPriceY(Math.max(el.open, el.close)), candleWidth, Math.abs(el.close - el.open) * priceScale);
+    //volume - test
+    ctx.rect(startX, HEIGHT, candleWidth, -(BOTTOM_OFFSET - 10) * el.volume / maxVolume);
+
     ctx.fill();
     ctx.stroke();
     ctx.closePath();
@@ -234,21 +252,23 @@ function drawAll(buys, sells, candles, startPrice, pair){
   ctx.fillText('vol ' + dSum.toFixed(2), 0, 10);
 
   //depth scale
-  ctx.fillText(buys.last().price.toFixed(2), 500, lastBottomY + 10);
-  ctx.fillText(sells.last().price.toFixed(2), 500, lastTopY + 10);
+  ctx.fillText(buys.last().price.toFixed(2), DELIMITER_X, lastBottomY + 10);
+  ctx.fillText(sells.last().price.toFixed(2), DELIMITER_X, lastTopY + 10);
 
   //candles scale
-  ctx.fillText(maxCandle.toFixed(2), 500, getPriceY(maxCandle) + 10);
-  ctx.fillText(minCandle.toFixed(2), 500, getPriceY(minCandle) + 10);
+  ctx.fillText(maxCandle.toFixed(2), DELIMITER_X, getPriceY(maxCandle) + 10);
+  ctx.fillText(minCandle.toFixed(2), DELIMITER_X, getPriceY(minCandle) + 10);
+  ctx.fillText('max vol', DELIMITER_X, HEIGHT - 50);
+  ctx.fillText(maxVolume.toFixed(2), DELIMITER_X, HEIGHT - 30);
 
   //curr price
   ctx.strokeStyle = 'rgba(0, 125, 125, 1)';
   ctx.fillStyle = 'rgba(0, 125, 125, 1)';
 
-  ctx.fillText(candles.last().close.toFixed(2), 500, priceY + 5);
+  ctx.fillText(candles.last().close.toFixed(2), DELIMITER_X, priceY + 5);
   ctx.beginPath();
-  ctx.moveTo(1060, priceY);
-  ctx.lineTo(560, priceY);
+  ctx.moveTo(WIDTH, priceY);
+  ctx.lineTo(DELIMITER_X + SCALE_WIDTH, priceY);
   ctx.stroke();
   ctx.closePath();
 
@@ -271,7 +291,7 @@ function detectTest(buys, sells, candles, price){
   let fits = [];
   for (var i = 0; i < min; i++) {
     if(c[0].high - c[i].high > threshold){
-      console.log(`${c[0].high} - ${c[i].high} > ${threshold}`);
+      // console.log(`${c[0].high} - ${c[i].high} > ${threshold}`);
       getByID('detect-result').innerHTML = 'no (candles)';
       return;
     }
@@ -279,16 +299,17 @@ function detectTest(buys, sells, candles, price){
   }
   
   let avg = fits.reduce((a,b) => a + b, 0) / fits.length;
-  console.log(avg);
+  // console.log(avg);
+  // console.log(c);
   for (var i = 0; i < sells.length; i++) {
     if(sells[i].price > avg && sells[i].sum < wall){
-      console.log(`${sells[i].price} > ${avg} && ${sells[i].sum} < ${wall}`);
+      // console.log(`${sells[i].price} > ${avg} && ${sells[i].sum} < ${wall}`);
       getByID('detect-result').innerHTML = 'no (walls)';
       return;
     }
   }
   getByID('detect-result').innerHTML = `should be ${avg}`;
-  console.log(`should be it @ ${avg}`);
+  // console.log(`should be it @ ${avg}`);
 }
 
 /*
