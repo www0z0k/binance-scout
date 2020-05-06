@@ -102,7 +102,6 @@ var ctx = canvas.getContext('2d');
 var WIDTH = canvas.width;
 var HEIGHT = canvas.height;
 var DRAW_BOTTOM = HEIGHT - BOTTOM_OFFSET;
-canvasTop.show();
 
 
 var currentCandles = [];
@@ -157,6 +156,7 @@ function drawAll(){
   if(!buys.length || !sells.length){
     return
   }
+  canvasTop.show();
   canvas.show();
 
   ctx.beginPath();
