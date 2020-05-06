@@ -276,6 +276,7 @@ function drawAll(){
     let x = DELIMITER_X * (currentTrades[i].ts - Date.now()) / valByID('trade-ttl') + DELIMITER_X;
     let y = getPriceY(Number(currentTrades[i].p));
     let r = Math.sqrt(currentTrades[i].p * currentTrades[i].q) / 5;
+    r = r < 1 ? 1 : r;
     ctx.arc(x, y, r, 0, 2 * Math.PI);
     ctx.fill();
     ctx.stroke();
