@@ -36,7 +36,7 @@
   candles <input type="number" value="60" id="candles-lim">
 </span>
 <!-- <div style="position: relative;"> -->
-  <canvas id="canv" width="1060" height="550" style="display: none; border:1px solid #ff00ff;" onmousemove="canvasMove(event)" onmouseout="clearCrosshair()"></canvas>
+  <canvas id="canv" width="1060" height="550" style="display: none; border:1px solid #ff00ff;"></canvas>
   <canvas id="canv2" width="1060" height="550" style="display: none; border:1px solid #ff00ff; z-index:2;margin-top:-550px;" onmousemove="canvasMove(event)" onmouseout="clearCrosshair()"></canvas>
 <!-- </div> -->
 <br>
@@ -105,12 +105,12 @@ canvasTop.show();
 /*
  * Crosshair
  */
-var CROSSHAIR = {x: -1, y: -1};
-function canvasMove(e){
-  CROSSHAIR = {x: e.offsetX, y: e.offsetY};
+var dirty = false;
+setInterval(el => {
   let ctx = canvasTop.getContext('2d');
-  ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  if(CROSSHAIR.x > -1 && CROSSHAIR.y > -1){
+  // if(CROSSHAIR.x > -1 && CROSSHAIR.y > -1){
+  if(dirty){
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
     ctx.beginPath();
     ctx.lineWidth = 1;
     ctx.strokeStyle = '#ffffff';
@@ -120,13 +120,22 @@ function canvasMove(e){
     ctx.lineTo(CROSSHAIR.x, HEIGHT);
     ctx.stroke();
     ctx.closePath();
+    dirty = false;
   }
+}, 33)
+var CROSSHAIR = {x: -1, y: -1};
+function canvasMove(e){
+  CROSSHAIR = {x: e.offsetX, y: e.offsetY};
+  dirty = true;
 }
 
 function clearCrosshair(){
-  CROSSHAIR = {x: -1, y: -1};
   let ctx = canvasTop.getContext('2d');
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  dirty = false;
+  // CROSSHAIR = {x: -1, y: -1};
+  // let ctx = canvasTop.getContext('2d');
+  // ctx.clearRect(0, 0, WIDTH, HEIGHT);
 }
 /*
  * Main display
