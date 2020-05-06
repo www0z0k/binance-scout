@@ -29,7 +29,7 @@
   min <input type="number" id="candles-min" class="detect" value="3">
   wall size <input type="number" id="wall-size" class="detect" value="20">
   --> <span id="detect-result"></span>
-<span id="connection">
+<span id="connection" style="z-index: 10;">
   <input type="text" id="api" placeholder="API KEY"><input type="text" id="secret" placeholder="SECRET">
   <button onclick="sendConnect()">connect</button> 
   depth <input type="number" step="10" value="200" id="depth-lim" onchange="setDepth()">
