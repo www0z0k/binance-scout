@@ -7,7 +7,7 @@
     font-family: monospace;
   }
   .detect {
-    width: 13px;
+    width: 23px;
   }
   input[type=number] {
     width: 74px;
@@ -32,10 +32,12 @@
 <span id="connection">
   <input type="text" id="api" placeholder="API KEY"><input type="text" id="secret" placeholder="SECRET">
   <button onclick="sendConnect()">connect</button> 
+  depth <input type="number" step="10" value="200" id="depth-lim" onchange="setDepth()">
+  candles <input type="number" value="60" id="candles-lim">
 </span>
 <canvas id="canv" width="1060" height="550" style="display: none; border:1px solid #ff00ff;"></canvas>
 <br>
-<table style="width: 100%">
+<table style="width: 1060px;">
   <tr>
     <td>
       <span id="balance"></span><br>
@@ -89,7 +91,7 @@ getByID('connection').hide();
  * Main display
  */
 
-var BOTTOM_OFFSET = 150;
+var BOTTOM_OFFSET = 100;
 var DELIMITER_X = 400;
 var SCALE_WIDTH = 60;
 
@@ -334,9 +336,9 @@ socket.addEventListener('open', function (event) {
 socket.addEventListener('message', function (event) {
   let res = JSON.parse(event.data);
   window.document.title = res.price.toFixed(2);
-  drawAll(res.walls.buy, res.walls.sell, res.candles.slice(440), res.price, res.pair);
+  drawAll(res.walls.buy, res.walls.sell, res.candles.slice(res.candles.length - valByID('candles-lim')), res.price, res.pair);
   
-  detectTest(res.walls.buy, res.walls.sell, res.candles.slice(440), res.price);
+  detectTest(res.walls.buy, res.walls.sell, res.candles.slice(res.candles.length - valByID('candles-lim')), res.price);
 
   getByID('b-price').value = res.price + 1;
   getByID('s-price').value = res.price - 1;
@@ -411,6 +413,9 @@ function sendConnect(){
 }
 function cancelOrder(id){
   socket.send('{"action": "cancelOrder", "id": ' + id + '}');
+}
+function setDepth(){
+  socket.send('{"action": "depths-limits", "value": ' + valByID('depth-lim') + '}');
 }
 function sell(amount){
   let price = (getByID('use-custom-sell').checked && !isNaN(valByID('s-price-opt'))) ? Number(valByID('s-price-opt')) : Number(valByID('s-price'));

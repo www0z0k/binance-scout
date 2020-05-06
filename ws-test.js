@@ -8,6 +8,7 @@ var toShow = {
 	walls: {sell: [], buy:[]}};
 var currencies = ['USDT', 'BTC'];
 
+var depthLim = 200;
 
 const express = require('express');
 const app = express();
@@ -44,6 +45,8 @@ wss.on('connection', function (ws) {
 					case 'buy':
 						console.log(message);
 						binance.buy(toShow.pair, message.amount, message.price);
+					case 'depths-limits':
+						depthLim = message.value;
 					break;					
 				}
 			}
@@ -77,8 +80,8 @@ const start = (key, secret) => {
 	binance.websockets.depthCache([toShow.pair], (s, depth) => {
 		let firstBid, firstAsk;
 
-		let bids = binance.sortBids(depth.bids, 200);
-		let asks = binance.sortAsks(depth.asks, 200);
+		let bids = binance.sortBids(depth.bids, depthLim);
+		let asks = binance.sortAsks(depth.asks, depthLim);
 	
 	    let sumSell = 0;
 	    toShow.walls.sell = [];
@@ -118,6 +121,44 @@ const start = (key, secret) => {
 		}
 		socket && socket.send(`${JSON.stringify(toShow)}`);
 	});
+/*
+  "e": "trade",     // Event type
+  "E": 123456789,   // Event time
+  "s": "BNBBTC",    // Symbol
+  "t": 12345,       // Trade ID
+  "p": "0.001",     // Price
+  "q": "100",       // Quantity
+  "b": 88,          // Buyer order ID
+  "a": 50,          // Seller order ID
+  "T": 123456785,   // Trade time
+  "m": true,        // Is the buyer the market maker?
+  "M": true         // Ignore
+1588760934540 1588760934652 1588760934650
+1588760934541 1588760934652 1588760934650
+1588760934576 1588760934677 1588760934677
+1588760934589 1588760934711 1588760934709
+1588760934611 1588760934731 1588760934730
+1588760934633 1588760934754 1588760934753
+1588760934656 1588760934754 1588760934753
+1588760934681 1588760934779 1588760934778
+1588760934682 1588760934786 1588760934785
+1588760934682 1588760934800 1588760934799
+1588760934690 1588760934800 1588760934799
+1588760934691 1588760934805 1588760934803
+1588760934711 1588760934828 1588760934828
+1588760934737 1588760934858 1588760934857
+1588760934739 1588760934858 1588760934857
+1588760934739 1588760934860 1588760934859
+1588760934759 1588760934879 1588760934877
+1588760934782 1588760934902 1588760934901
+
+console.log(Date.now(), trade.E, trade.T);
+*/
+/*
+	binance.websockets.trades([toShow.pair], (trade) => {
+		console.log(Date.now(), trade.E, trade.T);
+	});
+*/
 }
 
 const getBalance = () => {
