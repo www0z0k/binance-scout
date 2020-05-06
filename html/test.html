@@ -33,7 +33,9 @@
   <input type="text" id="api" placeholder="API KEY"><input type="text" id="secret" placeholder="SECRET">
   <button onclick="sendConnect()">connect</button> 
   depth <input type="number" step="10" value="200" id="depth-lim" onchange="setDepth()">
-  candles <input type="number" value="60" id="candles-lim"> crosshair<input type="checkbox" id="need-cross">
+  candles <input type="number" value="60" id="candles-lim"> 
+  crosshair<input type="checkbox" id="need-cross">
+  trade ttl <input type="number" value="60000" step="100" id="trade-ttl"> 
 </span>
 <!-- <div style="position: relative;"> -->
   <canvas id="canv" width="1060" height="550" style="display: none; border:1px solid #ff00ff;"></canvas>
@@ -105,6 +107,9 @@ canvasTop.show();
 
 var currentCandles = [];
 var currentTrades = [];
+var buys = [];
+var sells = [];
+var candles, startPrice, pair;
 /*
  * Crosshair
  */
@@ -126,6 +131,10 @@ setInterval(el => {
     dirty = false;
   }
 }, 33)
+setInterval(el => {
+  drawAll();
+  detectTest();
+}, 50)
 var CROSSHAIR = {x: -1, y: -1};
 function canvasMove(e){
   CROSSHAIR = {x: e.offsetX, y: e.offsetY};
@@ -143,7 +152,7 @@ function clearCrosshair(){
 /*
  * Main display
  */
-function drawAll(buys, sells, candles, startPrice, pair){
+function drawAll(){
   currentCandles = candles.slice();
   if(!buys.length || !sells.length){
     return
@@ -225,7 +234,7 @@ function drawAll(buys, sells, candles, startPrice, pair){
   ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
   ctx.moveTo(DELIMITER_X, wallsCenterY);
   var lastBottomY = 0;
-  for (var i = 0; i < buys.length; i++) {
+  for (let i = 0; i < buys.length; i++) {
     lastBottomY = getPriceY(buys[i].price);
     var x = DELIMITER_X - buys[i].sum * wallVolScale;
     ctx.lineTo(x, lastBottomY);
@@ -238,14 +247,14 @@ function drawAll(buys, sells, candles, startPrice, pair){
    
   /*
    * Green / Top / Sell wall
-   */
+   */   
   ctx.beginPath();
   ctx.strokeStyle = 'rgba(0, 255, 0, 1)';
   ctx.fillStyle = 'rgba(0, 255, 0, 0.4)';
   ctx.moveTo(DELIMITER_X, wallsCenterY);
 
   var lastTopY = 0;
-  for (var i = 0; i < sells.length; i++) {
+  for (let i = 0; i < sells.length; i++) {
     lastTopY = getPriceY(sells[i].price);
     var x = DELIMITER_X - sells[i].sum * wallVolScale;
     ctx.lineTo(x, lastTopY);
@@ -255,7 +264,22 @@ function drawAll(buys, sells, candles, startPrice, pair){
   ctx.stroke();
   ctx.closePath();
 
+  /*
+   * Recent trades
+   */
 
+  ctx.strokeStyle = 'rgba(0, 0, 255, 1)';
+  ctx.fillStyle = 'rgba(0, 0, 255, 0.4)';
+  for (let i = 0; i < currentTrades.length; i++) {
+    ctx.beginPath();
+    let x = DELIMITER_X * (currentTrades[i].ts - Date.now()) / valByID('trade-ttl') + DELIMITER_X;
+    let y = getPriceY(Number(currentTrades[i].p));
+    let r = Math.sqrt(currentTrades[i].p * currentTrades[i].q) / 5;
+    ctx.arc(x, y, r, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+  }
    
   /*
    * Candles
@@ -335,7 +359,7 @@ function detectTest(buys, sells, candles, price){
   c.sort((a, b) => {return b.high - a.high});
   let passed = true;
   let fits = [];
-  for (var i = 0; i < min; i++) {
+  for (let i = 0; i < min; i++) {
     if(c[0].high - c[i].high > threshold){
       // console.log(`${c[0].high} - ${c[i].high} > ${threshold}`);
       getByID('detect-result').innerHTML = 'no (candles)';
@@ -347,7 +371,7 @@ function detectTest(buys, sells, candles, price){
   let avg = fits.reduce((a,b) => a + b, 0) / fits.length;
   // console.log(avg);
   // console.log(c);
-  for (var i = 0; i < sells.length; i++) {
+  for (let i = 0; i < sells.length; i++) {
     if(sells[i].price > avg && sells[i].sum < wall){
       // console.log(`${sells[i].price} > ${avg} && ${sells[i].sum} < ${wall}`);
       getByID('detect-result').innerHTML = 'no (walls)';
@@ -387,9 +411,13 @@ socket.addEventListener('message', function (event) {
   getByID('s-price').value = p - 1;
 
   if(res.type == 'main'){
-    drawAll(res.walls.buy, res.walls.sell, res.candles.slice(res.candles.length - valByID('candles-lim')), res.price, res.pair);
+    buys = res.walls.buy
+    sells = res.walls.sell
+    candles = res.candles.slice(res.candles.length - valByID('candles-lim'))
+    price = res.price
+    pair = res.pair;
     
-    detectTest(res.walls.buy, res.walls.sell, res.candles.slice(res.candles.length - valByID('candles-lim')), res.price);
+    // detectTest(res.walls.buy, res.walls.sell, res.candles.slice(res.candles.length - valByID('candles-lim')), res.price);
 
     if(res.balances){
       getByID('buyBtns').show();
@@ -412,11 +440,11 @@ socket.addEventListener('message', function (event) {
     }
     if(res.orders){
       getByID('orders').innerHTML = '';
-      for (var i = 0; i < res.orders.sell.length; i++) {
+      for (let i = 0; i < res.orders.sell.length; i++) {
         let order = res.orders.sell[i];
         getByID('orders').innerHTML += ' SELL : ' + order.origQty + ' [ ' + (order.price * order.origQty).toFixed(3) + ' ] | price : ' + order.price.toFixed(2) + ' ID: ' + order.orderId + '<button onclick="cancelOrder(' + order.orderId +')">x</button><br>'; 
       }
-      for (var i = 0; i < res.orders.buy.length; i++) {
+      for (let i = 0; i < res.orders.buy.length; i++) {
         let order = res.orders.buy[i];
         getByID('orders').innerHTML += ' BUY : ' + order.origQty + ' [ ' + (order.price * order.origQty).toFixed(3) + ' ] | price : ' + order.price.toFixed(2) + ' ID: ' + order.orderId + '<button onclick="cancelOrder(' + order.orderId +')">x</button><br>'; 
       }
@@ -424,14 +452,14 @@ socket.addEventListener('message', function (event) {
     if(res.ordersOld){
       getByID('orders-history').innerHTML = '';
       res.ordersOld.reverse();
-      for (var i = 0; i < res.ordersOld.length; i++) {
+      for (let i = 0; i < res.ordersOld.length; i++) {
         getByID('orders-history').innerHTML += res.ordersOld[i].side + ', ' + res.ordersOld[i].origQty + '[' + res.ordersOld[i].cummulativeQuoteQty + '], price ' + res.ordersOld[i].price.toFixed(2) + '<br>';
       }
     }
   }else if(res.type == 'trade' && currentCandles.length){
-    // currentTrades.push(res);
-    let preLast = currentCandles.last().time;
-    console.log(res.T - preLast, res.p, res.q, res.m);
+    res.ts = Date.now();
+    currentTrades.push(res);
+    currentTrades = currentTrades.filter(el => (Date.now() - el.ts) < valByID('trade-ttl'));
   }
 });
 

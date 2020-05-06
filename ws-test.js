@@ -26,7 +26,7 @@ var WebSocketServer = require('ws').Server,
 
 var sockets = [];
 function send(msg){
-	for (var i = 0; i < sockets.length; i++) {
+	for (let i = 0; i < sockets.length; i++) {
 		sockets[i].send(msg);
 	}
 }
@@ -189,7 +189,7 @@ const cancelOrder = (id) => {
 const getOrders = () => {
 	binance.openOrders(toShow.pair, (error, openOrders, symbol) => {
 	  	toShow.orders = {sell: [], buy: []};
-		for (var i = 0; i < openOrders.length; i++) {
+		for (let i = 0; i < openOrders.length; i++) {
 			openOrders[i].price = Number(openOrders[i].price);
 			openOrders[i].origQty = Number(openOrders[i].origQty);
 			if(openOrders[i].side == 'SELL'){
@@ -205,7 +205,7 @@ const getOrdersAll = () => {
 	binance.allOrders(toShow.pair, (error, orders, symbol) => {
 	  	toShow.orders = {sell: [], buy: []};
 	  	toShow.ordersOld = [];
-		for (var i = 0; i < orders.length; i++) {
+		for (let i = 0; i < orders.length; i++) {
 	  		let order = orders[i];
 	  		order.price = Number(order.price);
 	  		order.origQty = Number(order.origQty);
