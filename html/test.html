@@ -108,7 +108,8 @@ var currentCandles = [];
 var currentTrades = [];
 var buys = [];
 var sells = [];
-var candles, startPrice, pair;
+var candles = [];
+var startPrice, pair;
 /*
  * Crosshair
  */
@@ -153,7 +154,7 @@ function clearCrosshair(){
  */
 function drawAll(){
   currentCandles = candles.slice();
-  if(!buys.length || !sells.length){
+  if(!buys.length || !sells.length || !candles.length){
     return
   }
   canvasTop.show();
@@ -349,7 +350,10 @@ function drawAll(){
 /*
  * Detector test
  */
-function detectTest(buys, sells, candles, price){
+function detectTest(){
+  if(!buys.length || !sells.length || !candles.length){
+    return
+  }
   let count = valByID('candles-count');
   let min = valByID('candles-min');
   let threshold = valByID('candles-threshold');
@@ -411,10 +415,10 @@ socket.addEventListener('message', function (event) {
   getByID('s-price').value = p - 1;
 
   if(res.type == 'main'){
-    buys = res.walls.buy
-    sells = res.walls.sell
-    candles = res.candles.slice(res.candles.length - valByID('candles-lim'))
-    price = res.price
+    buys = res.walls.buy;
+    sells = res.walls.sell;
+    candles = res.candles.slice(res.candles.length - valByID('candles-lim'));
+    price = res.price;
     pair = res.pair;
     
     // detectTest(res.walls.buy, res.walls.sell, res.candles.slice(res.candles.length - valByID('candles-lim')), res.price);
