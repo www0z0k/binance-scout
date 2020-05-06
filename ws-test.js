@@ -1,4 +1,5 @@
 var toShow = {
+	type: 'main', 
 	pair: 'BTCUSDT', 
 	price: 0, 
 	candles: [], 
@@ -23,11 +24,16 @@ app.listen(3002, function () {
 var WebSocketServer = require('ws').Server,
   wss = new WebSocketServer({port: 3003})
 
-var socket;
+var sockets = [];
+function send(msg){
+	for (var i = 0; i < sockets.length; i++) {
+		sockets[i].send(msg);
+	}
+}
 
 wss.on('connection', function (ws) {
-	socket = ws;
-	socket.on('message', function (message) {
+	sockets.push(ws);
+	ws.on('message', function (message) {
 		try{
 			message = JSON.parse(message);
 			if(message.action){
@@ -71,7 +77,6 @@ const start = (key, secret) => {
 		setInterval(() => {
 			if(binance){
 				getBalance();
-				// getOrders();
 				getOrdersAll();
 			}
 		}, 2500)
@@ -103,7 +108,7 @@ const start = (key, secret) => {
 	        sumBuy += Number(bids[k]);
 	    }
 	    toShow.price = (Number(firstAsk) + Number(firstBid)) / 2;
-		socket && socket.send(`${JSON.stringify(toShow)}`)
+		send(`${JSON.stringify(toShow)}`)
 	});
 
 
@@ -120,7 +125,7 @@ const start = (key, secret) => {
 			el.bull = el.open < el.close;
 			toShow.candles.push(el);
 		}
-		socket && socket.send(`${JSON.stringify(toShow)}`);
+		send(`${JSON.stringify(toShow)}`);
 	});
 /*
   "e": "trade",     // Event type
@@ -155,11 +160,12 @@ const start = (key, secret) => {
 
 console.log(Date.now(), trade.E, trade.T);
 */
-/*
+
 	binance.websockets.trades([toShow.pair], (trade) => {
-		console.log(Date.now(), trade.E, trade.T);
+		trade.type = 'trade';
+		send(`${JSON.stringify(trade)}`);
 	});
-*/
+
 }
 
 const getBalance = () => {

@@ -33,7 +33,7 @@
   <input type="text" id="api" placeholder="API KEY"><input type="text" id="secret" placeholder="SECRET">
   <button onclick="sendConnect()">connect</button> 
   depth <input type="number" step="10" value="200" id="depth-lim" onchange="setDepth()">
-  candles <input type="number" value="60" id="candles-lim">
+  candles <input type="number" value="60" id="candles-lim"> crosshair<input type="checkbox" id="need-cross">
 </span>
 <!-- <div style="position: relative;"> -->
   <canvas id="canv" width="1060" height="550" style="display: none; border:1px solid #ff00ff;"></canvas>
@@ -102,6 +102,9 @@ var HEIGHT = canvas.height;
 var DRAW_BOTTOM = HEIGHT - BOTTOM_OFFSET;
 canvasTop.show();
 
+
+var currentCandles = [];
+var currentTrades = [];
 /*
  * Crosshair
  */
@@ -109,7 +112,7 @@ var dirty = false;
 setInterval(el => {
   let ctx = canvasTop.getContext('2d');
   // if(CROSSHAIR.x > -1 && CROSSHAIR.y > -1){
-  if(dirty){
+  if(dirty && getByID('need-cross').checked){
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     ctx.beginPath();
     ctx.lineWidth = 1;
@@ -141,6 +144,7 @@ function clearCrosshair(){
  * Main display
  */
 function drawAll(buys, sells, candles, startPrice, pair){
+  currentCandles = candles.slice();
   if(!buys.length || !sells.length){
     return
   }
@@ -375,50 +379,59 @@ socket.addEventListener('open', function (event) {
 // Listen for messages
 socket.addEventListener('message', function (event) {
   let res = JSON.parse(event.data);
-  window.document.title = res.price.toFixed(2);
-  drawAll(res.walls.buy, res.walls.sell, res.candles.slice(res.candles.length - valByID('candles-lim')), res.price, res.pair);
-  
-  detectTest(res.walls.buy, res.walls.sell, res.candles.slice(res.candles.length - valByID('candles-lim')), res.price);
 
-  getByID('b-price').value = res.price + 1;
-  getByID('s-price').value = res.price - 1;
+  let p = Number(res.price || res.p).toFixed(2);
+  window.document.title = p;
 
-  if(res.balances){
-    getByID('buyBtns').show();
-    getByID('balance').innerHTML = '';
-    for(let c in res.balances){
-      let avail = res.balances[c].avail;
-      getByID('balance').innerHTML += c + ' : avail ' + avail + ',  order ' + res.balances[c].ordered + '<br>';
-      if(c == 'BTC'){
-        getByID('s-btns').innerHTML = createSellButton(avail, 0.25, false, 6, 0) 
-                                        + createSellButton(avail, 0.5, false, 6, 0) 
-                                        + createSellButton(avail, 0.75, false, 6, 0) 
-                                        + createSellButton(avail, 1, false, 6, 0);
-      }else if(c == 'USDT'){
-        getByID('b-btns').innerHTML = createSellButton(avail, 0.25, true, 2, 0) 
-                                        + createSellButton(avail, 0.5, true, 2, 0) 
-                                        + createSellButton(avail, 0.75, true, 2, 0) 
-                                        + createSellButton(avail, 1, true, 2, 0);
+  getByID('b-price').value = p + 1;
+  getByID('s-price').value = p - 1;
+
+  if(res.type == 'main'){
+    drawAll(res.walls.buy, res.walls.sell, res.candles.slice(res.candles.length - valByID('candles-lim')), res.price, res.pair);
+    
+    detectTest(res.walls.buy, res.walls.sell, res.candles.slice(res.candles.length - valByID('candles-lim')), res.price);
+
+    if(res.balances){
+      getByID('buyBtns').show();
+      getByID('balance').innerHTML = '';
+      for(let c in res.balances){
+        let avail = res.balances[c].avail;
+        getByID('balance').innerHTML += c + ' : avail ' + avail + ',  order ' + res.balances[c].ordered + '<br>';
+        if(c == 'BTC'){
+          getByID('s-btns').innerHTML = createSellButton(avail, 0.25, false, 6, 0) 
+                                          + createSellButton(avail, 0.5, false, 6, 0) 
+                                          + createSellButton(avail, 0.75, false, 6, 0) 
+                                          + createSellButton(avail, 1, false, 6, 0);
+        }else if(c == 'USDT'){
+          getByID('b-btns').innerHTML = createSellButton(avail, 0.25, true, 2, 0) 
+                                          + createSellButton(avail, 0.5, true, 2, 0) 
+                                          + createSellButton(avail, 0.75, true, 2, 0) 
+                                          + createSellButton(avail, 1, true, 2, 0);
+        }
       }
     }
-  }
-  if(res.orders){
-    getByID('orders').innerHTML = '';
-    for (var i = 0; i < res.orders.sell.length; i++) {
-      let order = res.orders.sell[i];
-      getByID('orders').innerHTML += ' SELL : ' + order.origQty + ' [ ' + (order.price * order.origQty).toFixed(3) + ' ] | price : ' + order.price.toFixed(2) + ' ID: ' + order.orderId + '<button onclick="cancelOrder(' + order.orderId +')">x</button><br>'; 
+    if(res.orders){
+      getByID('orders').innerHTML = '';
+      for (var i = 0; i < res.orders.sell.length; i++) {
+        let order = res.orders.sell[i];
+        getByID('orders').innerHTML += ' SELL : ' + order.origQty + ' [ ' + (order.price * order.origQty).toFixed(3) + ' ] | price : ' + order.price.toFixed(2) + ' ID: ' + order.orderId + '<button onclick="cancelOrder(' + order.orderId +')">x</button><br>'; 
+      }
+      for (var i = 0; i < res.orders.buy.length; i++) {
+        let order = res.orders.buy[i];
+        getByID('orders').innerHTML += ' BUY : ' + order.origQty + ' [ ' + (order.price * order.origQty).toFixed(3) + ' ] | price : ' + order.price.toFixed(2) + ' ID: ' + order.orderId + '<button onclick="cancelOrder(' + order.orderId +')">x</button><br>'; 
+      }
     }
-    for (var i = 0; i < res.orders.buy.length; i++) {
-      let order = res.orders.buy[i];
-      getByID('orders').innerHTML += ' BUY : ' + order.origQty + ' [ ' + (order.price * order.origQty).toFixed(3) + ' ] | price : ' + order.price.toFixed(2) + ' ID: ' + order.orderId + '<button onclick="cancelOrder(' + order.orderId +')">x</button><br>'; 
+    if(res.ordersOld){
+      getByID('orders-history').innerHTML = '';
+      res.ordersOld.reverse();
+      for (var i = 0; i < res.ordersOld.length; i++) {
+        getByID('orders-history').innerHTML += res.ordersOld[i].side + ', ' + res.ordersOld[i].origQty + '[' + res.ordersOld[i].cummulativeQuoteQty + '], price ' + res.ordersOld[i].price.toFixed(2) + '<br>';
+      }
     }
-  }
-  if(res.ordersOld){
-    getByID('orders-history').innerHTML = '';
-    res.ordersOld.reverse();
-    for (var i = 0; i < res.ordersOld.length; i++) {
-      getByID('orders-history').innerHTML += res.ordersOld[i].side + ', ' + res.ordersOld[i].origQty + '[' + res.ordersOld[i].cummulativeQuoteQty + '], price ' + res.ordersOld[i].price.toFixed(2) + '<br>';
-    }
+  }else if(res.type == 'trade' && currentCandles.length){
+    // currentTrades.push(res);
+    let preLast = currentCandles.last().time;
+    console.log(res.T - preLast, res.p, res.q, res.m);
   }
 });
 
