@@ -33,6 +33,7 @@ function send(msg){
 
 wss.on('connection', function (ws) {
 	sockets.push(ws);
+	console.log('connected:', sockets.length);
 	ws.on('message', function (message) {
 		try{
 			message = JSON.parse(message);
@@ -59,6 +60,12 @@ wss.on('connection', function (ws) {
 		}catch(er){
 			console.log('simple msg', message);
 		}
+	})
+
+	ws.on('close', function (arg) {
+		console.log('closed:', arg);
+  		// let tmp = sockets.slice();
+  		sockets = sockets.filter(el => el._closeCode != arg);
 	})
 })
 

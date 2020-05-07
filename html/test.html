@@ -109,6 +109,7 @@ var currentTrades = [];
 var buys = [];
 var sells = [];
 var candles = [];
+var candlesAll = [];
 var startPrice, pair;
 /*
  * Crosshair
@@ -270,7 +271,7 @@ function drawAll(){
    */
 
   ctx.strokeStyle = 'rgba(0, 0, 255, 1)';
-  ctx.fillStyle = 'rgba(0, 0, 255, 0.4)';
+  ctx.fillStyle = 'rgba(0, 0, 255, 0.1)';
   for (let i = 0; i < currentTrades.length; i++) {
     ctx.beginPath();
     let x = DELIMITER_X * (currentTrades[i].ts - Date.now()) / valByID('trade-ttl') + DELIMITER_X;
@@ -285,7 +286,7 @@ function drawAll(){
    
   /*
    * Candles
-   */
+   */   
   var space = 6;
   var candleWidth = (WIDTH - SCALE_WIDTH - DELIMITER_X) / candles.length - space;
 
@@ -312,6 +313,37 @@ function drawAll(){
     ctx.stroke();
     ctx.closePath();
   });
+  
+  /*
+   * Minimap
+   */
+  let allMaxCandle = Math.max.apply(null, candlesAll.map(el => el.close));
+  let allMinCandle = Math.min.apply(null, candlesAll.map(el => el.close));
+  let dAllCandlesMax = allMaxCandle - allMinCandle;
+  let allCandlesScale = BOTTOM_OFFSET / dAllCandlesMax;
+  ctx.strokeStyle = 'rgba(255, 0, 255, 1)';
+  ctx.beginPath();
+  // ctx.lineWidth = 0.2;
+  candlesAll.forEach((el, i) => {
+    let x = i / candlesAll.length * DELIMITER_X;
+    let y = DRAW_BOTTOM + BOTTOM_OFFSET * (1 - (el.close - allMinCandle) / dAllCandlesMax);
+
+    if(i == 0){
+      ctx.moveTo(x, y);
+    }else{
+      ctx.lineTo(x, y);
+    }
+    if(candlesAll.length - i == valByID('candles-lim')){
+      ctx.stroke();
+      ctx.closePath();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
+    }
+  });
+  ctx.stroke();
+  ctx.closePath();
+
    
 
   /*
@@ -419,6 +451,7 @@ socket.addEventListener('message', function (event) {
     buys = res.walls.buy;
     sells = res.walls.sell;
     candles = res.candles.slice(res.candles.length - valByID('candles-lim'));
+    candlesAll = res.candles.slice();
     price = res.price;
     pair = res.pair;
     

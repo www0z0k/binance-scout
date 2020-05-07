@@ -4,6 +4,6 @@ const app = express();
 app.get('/', function (req, res) {
    res.sendfile(__dirname + '/html/independent.html');
 });
-app.listen(8000, function () {
-   console.log('up and running on 8000!')
+app.listen(80, function () {
+   console.log('up and running on 80!')
 })
