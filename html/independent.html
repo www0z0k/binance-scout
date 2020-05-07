@@ -65,6 +65,5 @@ if(document.cookie){
 
 function sendConnect(){
   document.cookie = 'keys=' + valByID('api') + '|' + valByID('secret');
-  socket.send(`{"action": "login", "key":"${valByID('api')}", "secret":"${valByID('secret')}"}`);
 }
 </script></body></html>
