@@ -1,0 +1,70 @@
+<html>
+<head>
+	<style type="text/css">
+		body{
+			color:#ffff00;
+			background-color:#1D1D1D;
+			font-family: monospace;
+		}
+	</style>
+	<body>
+		<div id="out">hi!</div>
+
+		<input type="text" id="api" placeholder="API KEY"><input type="text" id="secret" placeholder="SECRET"><button onclick="sendConnect()">connect</button> 
+		<br>
+		<button onclick="go('test')">test</button> 
+		<button onclick="go('balance')">balance</button> 
+		<script>
+function getByID(id){
+  return document.getElementById(id);
+}
+function valByID(id){
+  return document.getElementById(id).value;
+}
+/*
+https://api.binance.com/api/v3/
+
+test
+https://api.binance.com/wapi/v3/systemStatus.html
+
+
+https://api.binance.com/sapi/v1/capital/config/getall
+*/
+var http = new XMLHttpRequest();
+// var url = 'api.binance.com';
+var url = 'https://api.binance.com';
+var balance = '/sapi/v1/capital/config/getall';
+var test = '/wapi/v3/systemStatus.html';
+const ends = {
+	'test': '/wapi/v3/systemStatus.html',
+	'balance': '/sapi/v1/capital/config/getall'
+}
+
+function go(k){
+	var paramsSigned = `apiKey=${valByID('api')}&secretKey=${valByID('secret')}`;
+	http.open('POST', url + ends[k], true);
+
+	//Send the proper header information along with the request
+	http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+
+	http.onreadystatechange = function() {//Call a function when the state changes.
+	    console.log(http.status);
+	    if(http.readyState == 4 && http.status == 200) {
+	        console.log(http.responseText);
+	    }
+	}
+	http.send(paramsSigned);
+}
+
+
+if(document.cookie){
+  let k = document.cookie.split('keys=')[1];
+  getByID('api').value = k.split('|')[0];
+  getByID('secret').value = k.split('|')[1];
+}
+
+function sendConnect(){
+  document.cookie = 'keys=' + valByID('api') + '|' + valByID('secret');
+  socket.send(`{"action": "login", "key":"${valByID('api')}", "secret":"${valByID('secret')}"}`);
+}
+</script></body></html>
