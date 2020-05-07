@@ -270,10 +270,10 @@ function drawAll(){
    * Recent trades
    */
 
-  ctx.strokeStyle = 'rgba(0, 0, 255, 1)';
-  ctx.fillStyle = 'rgba(0, 0, 255, 0.1)';
   for (let i = 0; i < currentTrades.length; i++) {
     ctx.beginPath();
+    ctx.fillStyle = currentTrades[i].m ? 'rgba(0, 0, 255, 0.1)' : 'rgba(255, 255, 0, 0.1)';
+    ctx.strokeStyle = currentTrades[i].m ? 'rgba(0, 0, 255, 1)' : 'rgba(255, 255, 0, 1)';
     let x = DELIMITER_X * (currentTrades[i].ts - Date.now()) / valByID('trade-ttl') + DELIMITER_X;
     let y = getPriceY(Number(currentTrades[i].p));
     let r = Math.sqrt(currentTrades[i].p * currentTrades[i].q) / 5;
