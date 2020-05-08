@@ -225,8 +225,16 @@ function drawAll(){
   ctx.moveTo(DELIMITER_X, 0);
   ctx.lineTo(DELIMITER_X, HEIGHT);
 
+  /*
+   * Grid
+   */
+
   var scaleStep = 10;
-  if(dPrice > 499){
+  if(dPrice > 5000){
+    scaleStep = 500;
+  }else if(dPrice > 1500){
+    scaleStep = 250;
+  }else if(dPrice > 499){
     scaleStep = 100;
   }else if(dPrice > 250){
     scaleStep = 40;
@@ -469,6 +477,7 @@ socket.addEventListener('message', function (event) {
   getByID('s-price').value = p - 1;
 
   if(res.type == 'main'){
+    getByID('tf').value = res.tf;
     buys = res.walls.buy;
     sells = res.walls.sell;
     candles = res.candles.slice(res.candles.length - valByID('candles-lim'));

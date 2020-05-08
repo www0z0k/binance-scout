@@ -59,6 +59,7 @@ wss.on('connection', function (ws) {
 					case 'tf':
 						TF = message.tf;
 						restartChart();
+						toShow.tf = TF;
 					break;
 									
 				}
@@ -97,8 +98,10 @@ const restartChart = () => {
 			el.bull = el.open < el.close;
 			toShow.candles.push(el);
 		}
+		toShow.tf = TF;
 		send(`${JSON.stringify(toShow)}`);
 	}, 1000);
+	console.log('opened', chartTFID);
 }
 
 const start = (key, secret) => {
