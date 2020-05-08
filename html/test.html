@@ -32,7 +32,7 @@
 <span id="connection" style="z-index: 10;">
   <input type="text" id="api" placeholder="API KEY"><input type="text" id="secret" placeholder="SECRET">
   <button onclick="sendConnect()">connect</button> 
-  depth <input type="number" step="10" value="200" id="depth-lim" class="detect" onchange="setDepth()">
+  depth <input type="number" step="10" value="200" id="depth-lim" class="detect">
   candles <input type="number" value="60" id="candles-lim" class="detect"> 
   crosshair<input type="checkbox" id="need-cross">
   trade ttl <input type="number" value="60000" step="100" id="trade-ttl">
@@ -175,6 +175,10 @@ function drawAll(){
   if(!buys.length || !sells.length || !candles.length){
     return
   }
+
+  let slicedBuys = buys.slice(0, valByID('depth-lim'));
+  let slicedSells = sells.slice(0, valByID('depth-lim'));
+
   canvasTop.show();
   canvas.show();
 
@@ -198,13 +202,13 @@ function drawAll(){
     minCandle = minCandle ? (minCandle > el.low ? el.low : minCandle) : el.low;
     maxVolume = maxVolume < el.volume ? el.volume : maxVolume;
   });
-  var dPriceBuy = buys[0].price - buys.last().price;
-  var dPriceSell = sells.last().price - sells[0].price;
+  var dPriceBuy = slicedBuys[0].price - slicedBuys.last().price;
+  var dPriceSell = slicedSells.last().price - slicedSells[0].price;
 
-  var dSum = Math.max(buys.last().sum, sells.last().sum);
+  var dSum = Math.max(slicedBuys.last().sum, slicedSells.last().sum);
 
-  var absMin = Math.min(sells[0].price, buys.last().price, minCandle)
-  var absMax = Math.max(buys[0].price, sells.last().price, maxCandle)
+  var absMin = Math.min(slicedSells[0].price, slicedBuys.last().price, minCandle)
+  var absMax = Math.max(slicedBuys[0].price, slicedSells.last().price, maxCandle)
 
   var dPrice = absMax - absMin;
 
@@ -261,9 +265,9 @@ function drawAll(){
   ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
   ctx.moveTo(DELIMITER_X, wallsCenterY);
   var lastBottomY = 0;
-  for (let i = 0; i < buys.length; i++) {
-    lastBottomY = getPriceY(buys[i].price);
-    var x = DELIMITER_X - buys[i].sum * wallVolScale;
+  for (let i = 0; i < slicedBuys.length; i++) {
+    lastBottomY = getPriceY(slicedBuys[i].price);
+    var x = DELIMITER_X - slicedBuys[i].sum * wallVolScale;
     ctx.lineTo(x, lastBottomY);
   }
   ctx.lineTo(DELIMITER_X, lastBottomY);
@@ -281,9 +285,9 @@ function drawAll(){
   ctx.moveTo(DELIMITER_X, wallsCenterY);
 
   var lastTopY = 0;
-  for (let i = 0; i < sells.length; i++) {
-    lastTopY = getPriceY(sells[i].price);
-    var x = DELIMITER_X - sells[i].sum * wallVolScale;
+  for (let i = 0; i < slicedSells.length; i++) {
+    lastTopY = getPriceY(slicedSells[i].price);
+    var x = DELIMITER_X - slicedSells[i].sum * wallVolScale;
     ctx.lineTo(x, lastTopY);
   }
   ctx.lineTo(DELIMITER_X, lastTopY);
@@ -385,8 +389,8 @@ function drawAll(){
 
   ctx.fillText('vol ' + dSum.toFixed(2), 0, 10);
   //depth scale
-  ctx.fillText(buys.last().price.toFixed(2), DELIMITER_X, lastBottomY + 10);
-  ctx.fillText(sells.last().price.toFixed(2), DELIMITER_X, lastTopY + 10);
+  ctx.fillText(slicedBuys.last().price.toFixed(2), DELIMITER_X, lastBottomY + 10);
+  ctx.fillText(slicedSells.last().price.toFixed(2), DELIMITER_X, lastTopY + 10);
 
   //candles scale
   ctx.fillText(maxCandle.toFixed(2), DELIMITER_X, getPriceY(maxCandle) + 10);
@@ -563,9 +567,9 @@ function sendConnect(){
 function cancelOrder(id){
   socket.send('{"action": "cancelOrder", "id": ' + id + '}');
 }
-function setDepth(){
-  socket.send('{"action": "depths-limits", "value": ' + valByID('depth-lim') + '}');
-}
+// function setDepth(){
+//   socket.send('{"action": "depths-limits", "value": ' + valByID('depth-lim') + '}');
+// }
 function setTF(val){
   socket.send('{"action": "tf", "tf": "' + val + '"}');
 }
