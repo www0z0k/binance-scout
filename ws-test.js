@@ -10,6 +10,7 @@ var toShow = {
 var currencies = ['USDT', 'BTC'];
 
 var depthLim = 200;
+var TF = '1m';
 
 const express = require('express');
 const app = express();
@@ -54,7 +55,12 @@ wss.on('connection', function (ws) {
 						binance.buy(toShow.pair, message.amount, message.price);
 					case 'depths-limits':
 						depthLim = message.value;
-					break;					
+					break;
+					case 'tf':
+						TF = message.tf;
+						restartChart();
+					break;
+									
 				}
 			}
 		}catch(er){
@@ -73,8 +79,28 @@ Number.prototype.toFixed = function(len){
 	var parts = this.toString().split('.');
 	return parts.length == 1 ? parts[0] : (parts[0] + '.' + parts[1].slice(0, len));
 }
-
+var chartTFID = '';
 var binance;
+
+const restartChart = () => {
+	binance.websockets.terminate(chartTFID);
+	chartTFID = binance.websockets.chart(toShow.pair, TF, (symbol, interval, chart) => {
+		toShow.candles = [];
+		for(var k in chart){
+			let el = {};
+			el.open = Number(chart[k].open);
+			el.high = Number(chart[k].high);
+			el.low = Number(chart[k].low);
+			el.close = Number(chart[k].close);
+			el.volume = Number(chart[k].volume);
+			el.time = Number(k);
+			el.bull = el.open < el.close;
+			toShow.candles.push(el);
+		}
+		send(`${JSON.stringify(toShow)}`);
+	}, 1000);
+}
+
 const start = (key, secret) => {
 	binance = new require('node-binance-api')({
 	      APIKEY: key || '',
@@ -118,22 +144,7 @@ const start = (key, secret) => {
 		send(`${JSON.stringify(toShow)}`)
 	});
 
-
-	binance.websockets.chart(toShow.pair, "1m", (symbol, interval, chart) => {
-		toShow.candles = [];
-		for(var k in chart){
-			let el = {};
-			el.open = Number(chart[k].open);
-			el.high = Number(chart[k].high);
-			el.low = Number(chart[k].low);
-			el.close = Number(chart[k].close);
-			el.volume = Number(chart[k].volume);
-			el.time = Number(k);
-			el.bull = el.open < el.close;
-			toShow.candles.push(el);
-		}
-		send(`${JSON.stringify(toShow)}`);
-	});
+	restartChart();
 /*
   "e": "trade",     // Event type
   "E": 123456789,   // Event time
@@ -146,34 +157,15 @@ const start = (key, secret) => {
   "T": 123456785,   // Trade time
   "m": true,        // Is the buyer the market maker?
   "M": true         // Ignore
-1588760934540 1588760934652 1588760934650
-1588760934541 1588760934652 1588760934650
-1588760934576 1588760934677 1588760934677
-1588760934589 1588760934711 1588760934709
-1588760934611 1588760934731 1588760934730
-1588760934633 1588760934754 1588760934753
-1588760934656 1588760934754 1588760934753
-1588760934681 1588760934779 1588760934778
-1588760934682 1588760934786 1588760934785
-1588760934682 1588760934800 1588760934799
-1588760934690 1588760934800 1588760934799
-1588760934691 1588760934805 1588760934803
-1588760934711 1588760934828 1588760934828
-1588760934737 1588760934858 1588760934857
-1588760934739 1588760934858 1588760934857
-1588760934739 1588760934860 1588760934859
-1588760934759 1588760934879 1588760934877
-1588760934782 1588760934902 1588760934901
-
-console.log(Date.now(), trade.E, trade.T);
 */
 
 	binance.websockets.trades([toShow.pair], (trade) => {
 		trade.type = 'trade';
 		send(`${JSON.stringify(trade)}`);
 	});
-
 }
+
+
 
 const getBalance = () => {
 	binance && binance.balance((error, balances) => {

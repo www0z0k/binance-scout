@@ -7,7 +7,7 @@
     font-family: monospace;
   }
   .detect {
-    width: 23px;
+    width: 52px!important;
   }
   input[type=number] {
     width: 74px;
@@ -32,10 +32,27 @@
 <span id="connection" style="z-index: 10;">
   <input type="text" id="api" placeholder="API KEY"><input type="text" id="secret" placeholder="SECRET">
   <button onclick="sendConnect()">connect</button> 
-  depth <input type="number" step="10" value="200" id="depth-lim" onchange="setDepth()">
-  candles <input type="number" value="60" id="candles-lim"> 
+  depth <input type="number" step="10" value="200" id="depth-lim" class="detect" onchange="setDepth()">
+  candles <input type="number" value="60" id="candles-lim" class="detect"> 
   crosshair<input type="checkbox" id="need-cross">
-  trade ttl <input type="number" value="60000" step="100" id="trade-ttl"> 
+  trade ttl <input type="number" value="60000" step="100" id="trade-ttl">
+  TF <select id="tf" onchange="setTF(this.value)">
+      <option value="1m">1m</option>
+      <option value="3m">3m</option>
+      <option value="5m">5m</option>
+      <option value="15m">15m</option>
+      <option value="30m">30m</option>
+      <option value="1h">1h</option>
+      <option value="2h">2h</option>
+      <option value="4h">4h</option>
+      <option value="6h">6h</option>
+      <option value="8h">8h</option>
+      <option value="12h">12h</option>
+      <option value="1d">1d</option>
+      <option value="3d">3d</option>
+      <option value="1w">1w</option>
+      <option value="1M">1M</option>
+  </select> 
 </span>
 <!-- <div style="position: relative;"> -->
   <canvas id="canv" width="1060" height="550" style="display: none; border:1px solid #ff00ff;"></canvas>
@@ -351,10 +368,14 @@ function drawAll(){
    */
    
   ctx.fillStyle = 'yellow';
+  ctx.font = '11px monospace';
+  //minimap
+  ctx.fillText(allMinCandle.toFixed(2), 1, HEIGHT - 4);
+  ctx.fillText(allMaxCandle.toFixed(2), 1, HEIGHT - BOTTOM_OFFSET + 9);
+
   ctx.font = '13px monospace';
 
   ctx.fillText('vol ' + dSum.toFixed(2), 0, 10);
-
   //depth scale
   ctx.fillText(buys.last().price.toFixed(2), DELIMITER_X, lastBottomY + 10);
   ctx.fillText(sells.last().price.toFixed(2), DELIMITER_X, lastTopY + 10);
@@ -535,6 +556,9 @@ function cancelOrder(id){
 }
 function setDepth(){
   socket.send('{"action": "depths-limits", "value": ' + valByID('depth-lim') + '}');
+}
+function setTF(val){
+  socket.send('{"action": "tf", "tf": "' + val + '"}');
 }
 function sell(amount){
   let price = (getByID('use-custom-sell').checked && !isNaN(valByID('s-price-opt'))) ? Number(valByID('s-price-opt')) : Number(valByID('s-price'));
