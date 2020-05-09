@@ -22,13 +22,50 @@
 </head>
 <body>
 <span id="pair"></span>
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  =(^-_-^)=&nbsp;
-  candles <input type="number" id="candles-count" class="detect" value="10">
-  threshold <input type="number" id="candles-threshold" class="detect" value="2">
-  min <input type="number" id="candles-min" class="detect" value="3">
-  wall size <input type="number" id="wall-size" class="detect" value="20">
-  --> <span id="detect-result"></span>
+<button id="toggle-predict" onclick="togglePredict()">predict +</button>
+  <hr>
+  
+  <div id="predict">
+    candles to check:
+    1.<input type="number" id="candles-count-1" class="detect" value="1000">
+    2.<input type="number" id="candles-count-2" class="detect" value="500">
+    3.<input type="number" id="candles-count-3" class="detect" value="100">
+    4.<input type="number" id="candles-count-4" class="detect" value="60">
+    5.<input type="number" id="candles-count-5" class="detect" value="30">
+    6.<input type="number" id="candles-count-6" class="detect" value="10">
+    use <select id="use-candles" onchange="resetCount()">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+    </select>for candle levels
+    for fibo<select id="use-candles-fibo">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+    </select>  
+    <br>
+    analyze candles:
+    threshold <input type="number" id="candles-threshold" class="detect" onchange="resetCount()" value="2">
+    min matching <input type="number" id="candles-min" class="detect" onchange="resetCount()" value="2">
+    wall size <input type="number" id="wall-size" class="detect" onchange="resetCount()" value="10">
+    --> should be  <span id="detect-result-candles-top"></span> / <span id="detect-result-candles-bottom"></span>
+     | ttl <input type="number" id="candle-levels-ttl" class="detect" value="15"> passed <span id="ticks-passed"></span>
+    <br>
+    MA 1:<input type="number" id="ma1" class="detect" value="75"> MA 2:<input type="number" id="ma2" class="detect" value="150"> prediction <span id="ma-trend"></span>
+    <br>
+    big wall:<input type="number" id="big-wall" class="detect" value="70"> at <span id="top-wall"></span> / <span id="bottom-wall"></span>
+    <br>
+    fibo resist: <span id="fibo-resist"></span><br>
+    fibo support: <span id="fibo-support"></span>
+
+    <hr>
+  </div>
 <span id="connection" style="z-index: 10;">
   <input type="text" id="api" placeholder="API KEY"><input type="text" id="secret" placeholder="SECRET">
   <button onclick="sendConnect()">connect</button> 
@@ -76,9 +113,18 @@
 /*
  * Helpers
  */
-Number.prototype.toFixed = function(len){
+Number.prototype.toFixed = function(len, addZeros){
   var parts = this.toString().split('.');
-  return parts.length == 1 ? parts[0] : (parts[0] + '.' + parts[1].slice(0, len));
+  var tail = parts.length == 1 ? '' : parts[1].slice(0, len);
+  if(addZeros){
+    while(tail.length < len){
+      tail += '0';
+    }
+  }
+  if(tail.length){
+    tail = '.' + tail;
+  }
+  return parts[0] + tail;
 }
 Array.prototype.last = function(){
   return this[this.length - 1];
@@ -103,6 +149,7 @@ function valByID(id){
  * Init
  */
 getByID('buyBtns').hide();
+getByID('predict').hide();
 getByID('connection').hide();
 
 
@@ -123,7 +170,170 @@ var buys = [];
 var sells = [];
 var candles = [];
 var candlesAll = [];
-var startPrice, pair;
+var price, pair;
+
+
+var fibo = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+/*
+ * Detector test
+ */
+var candleResist, candleSupport, prevTime;
+var topUpdate = 0;
+var bottomUpdate = 0;
+var ticksPassed = 2000;//to help resetting
+togglePredict();
+getByID('use-candles').value = 5;
+
+function resetCount(){
+  topUpdate = bottomUpdate = 0;
+}
+
+function checkTopCandles(c, min, threshold, wall){
+  c.sort((a, b) => {return b.high - a.high});
+  let passed = true;
+  let fits = [];
+  if(min == 1){
+    fits = [c[0].high];
+  }else{
+    for (let i = 1; i < min; i++) {
+      if(c[0].high - c[i].high > threshold){
+        tryUpdateResist('no (candles)');
+        return;
+      }
+      fits.push(c[i].high);
+    }
+  }
+
+  let avg = fits.reduce((a,b) => a + b, 0) / fits.length;
+  for (let i = 0; i < sells.length; i++) {
+    if(sells[i].price > avg && sells[i].sum < wall){
+      tryUpdateResist('no (walls)');
+      return;
+    }
+  }
+  tryUpdateResist(avg);
+}
+
+function tryUpdateResist(val){
+  if(isNaN(val)){
+    if(ticksPassed - topUpdate > valByID('candle-levels-ttl') || !candleResist){
+      getByID('detect-result-candles-top').innerHTML = val;
+    }
+  }else{
+    if(ticksPassed - topUpdate > valByID('candle-levels-ttl') || val >= candleResist || !candleResist){
+      topUpdate = ticksPassed;
+      candleResist = val.toFixed(2);
+      getByID('detect-result-candles-top').innerHTML = val.toFixed(2);
+    }
+  }
+}
+
+function checkBottomCandles(c, min, threshold, wall){
+  c.sort((a, b) => {return a.low - b.low});
+  let passed = true;
+  let fits = [];
+  if(min == 1){
+    fits = [c[0].low];
+  }else{
+    for (let i = 1; i < min; i++) {
+      if(c[i].low - c[0].low > threshold){
+        tryUpdateSupport('no (candles)');
+        return;
+      }
+      fits.push(c[i].low);
+    }
+  }
+
+  let avg = fits.reduce((a,b) => a + b, 0) / fits.length;
+  for (let i = 0; i < buys.length; i++) {
+    if(buys[i].price < avg && buys[i].sum < wall){
+      tryUpdateSupport('no (walls)');
+      return;
+    }
+  }
+  tryUpdateSupport(avg);
+}
+
+function tryUpdateSupport(val){
+  if(isNaN(val)){
+    if(ticksPassed - topUpdate > valByID('candle-levels-ttl') || !candleSupport){
+      getByID('detect-result-candles-bottom').innerHTML = val;
+    }
+  }else{
+    if(ticksPassed - topUpdate > valByID('candle-levels-ttl') || val <= candleSupport || !candleSupport){
+      candleSupport = val.toFixed(2);
+      bottomUpdate = ticksPassed;
+      getByID('detect-result-candles-bottom').innerHTML = val.toFixed(2);
+    }
+  }
+}
+
+function checkMA(){
+  let arr1 = candlesAll.MA(valByID('ma1'), 'close');
+  let arr2 = candlesAll.MA(valByID('ma2'), 'close');
+  let toCheck = getInterceptions(arr1, arr2);
+  if(toCheck.length > 1){
+    getByID('ma-trend').innerHTML = toCheck.last() < toCheck[toCheck.length - 2] ? 'upward' : 'downward';
+  }else{
+    getByID('ma-trend').innerHTML = '—';
+  }
+}
+
+function checkWalls(){
+  for (let i = 0; i < buys.length; i++) {
+    if(buys[i].sum > valByID('big-wall')){
+      getByID('bottom-wall').innerHTML = buys[i].price.toFixed(2, true) + ` [${buys[i].sum.toFixed(2, true)}]`;
+      break;
+    }
+  }
+  for (let i = 0; i < sells.length; i++) {
+    if(sells[i].sum > valByID('big-wall')){
+      getByID('top-wall').innerHTML = sells[i].price.toFixed(2, true) + ` [${sells[i].sum.toFixed(2, true)}]`;
+      break;
+    }
+  }
+  
+}
+function checkFibo(c){
+  getByID('fibo-resist').innerHTML = '';
+  getByID('fibo-support').innerHTML = '';
+  let max = Math.max.apply(null, c.map(el => el.close));
+  let min = Math.min.apply(null, c.map(el => el.close));
+  let delta = max - min;
+  fibo.map(el => min + el * delta).forEach(el => {
+    if(el < price){
+      getByID('fibo-support').innerHTML += el.toFixed(2, true) + ', ';
+    }else{
+      getByID('fibo-resist').innerHTML += el.toFixed(2, true) + ', ';
+    }
+  });
+}
+function detectTest(){
+  if(!buys.length || !sells.length || !candlesAll.length){
+    return
+  }
+  if(candlesAll.last().time != prevTime){
+    ++ticksPassed;
+    prevTime = candlesAll.last().time;
+  }
+
+  let count = valByID('candles-count-' + valByID('use-candles'));
+
+  let min = valByID('candles-min');
+  let threshold = valByID('candles-threshold');
+  let wall = valByID('wall-size');
+
+  let c = candlesAll.slice(candlesAll.length - count);
+  checkTopCandles(c, min, threshold, wall);
+  checkBottomCandles(c, min, threshold, wall);
+  getByID('ticks-passed').innerHTML = (ticksPassed - topUpdate) + ' / ' + (ticksPassed - bottomUpdate);
+  
+  checkFibo(candlesAll.slice(candlesAll.length - valByID('candles-count-' + valByID('use-candles-fibo'))));
+  checkMA();
+  checkWalls();
+}
+
+
 /*
  * Crosshair
  */
@@ -326,6 +536,8 @@ function drawAll(){
     ctx.lineTo(centerX, el.bull ? getPriceY(el.close) : getPriceY(el.open));
     ctx.moveTo(centerX, el.bull ? getPriceY(el.open) : getPriceY(el.close));
     ctx.lineTo(centerX, getPriceY(el.low));
+    // ctx.font = '11px monospace';
+    // ctx.fillText(el.low, centerX, getPriceY(el.low) + 5);
 
     ctx.rect(startX, getPriceY(Math.max(el.open, el.close)), candleWidth, Math.abs(el.close - el.open) * priceScale);
     //volume - test
@@ -348,6 +560,8 @@ function drawAll(){
     ctx.lineTo(centerX, el.bull ? getPriceY(el.close) : getPriceY(el.open));
     ctx.moveTo(centerX, el.bull ? getPriceY(el.open) : getPriceY(el.close));
     ctx.lineTo(centerX, getPriceY(el.low));
+    // ctx.font = '11px monospace';
+    // ctx.fillText(el.low, centerX, getPriceY(el.low) + 5);
 
     ctx.rect(startX, getPriceY(Math.max(el.open, el.close)), candleWidth, Math.abs(el.close - el.open) * priceScale);
     //volume - test
@@ -367,7 +581,6 @@ function drawAll(){
   let allCandlesScale = BOTTOM_OFFSET / dAllCandlesMax;
   ctx.strokeStyle = 'rgba(255, 0, 255, 1)';
   ctx.beginPath();
-  // ctx.lineWidth = 0.2;
   candlesAll.forEach((el, i) => {
     let x = i / candlesAll.length * DELIMITER_X;
     let y = DRAW_BOTTOM + BOTTOM_OFFSET * (1 - (el.close - allMinCandle) / dAllCandlesMax);
@@ -388,7 +601,8 @@ function drawAll(){
   ctx.stroke();
   ctx.closePath();
 
-   
+  drawMA(candlesAll.MA(valByID('ma1'), 'close').filter(el => !isNaN(el)), '#ff0000', ctx);
+  drawMA(candlesAll.MA(valByID('ma2'), 'close').filter(el => !isNaN(el)), '#00ff00', ctx);
 
   /*
    * Captions
@@ -397,38 +611,36 @@ function drawAll(){
   ctx.fillStyle = 'yellow';
   ctx.font = '11px monospace';
   //minimap
-  ctx.fillText(allMinCandle.toFixed(2), 1, HEIGHT - 4);
-  ctx.fillText(allMaxCandle.toFixed(2), 1, HEIGHT - BOTTOM_OFFSET + 9);
+  ctx.fillText(allMinCandle.toFixed(2, true), 1, HEIGHT - 4);
+  ctx.fillText(allMaxCandle.toFixed(2, true), 1, HEIGHT - BOTTOM_OFFSET + 9);
 
   ctx.font = '13px monospace';
 
-  ctx.fillText('vol ' + dSum.toFixed(2), 0, 10);
+  ctx.fillText('vol ' + dSum.toFixed(2, true), 0, 10);
   //depth scale
-  ctx.fillText(slicedBuys.last().price.toFixed(2), DELIMITER_X, lastBottomY + 10);
-  ctx.fillText(slicedSells.last().price.toFixed(2), DELIMITER_X, lastTopY + 10);
+  ctx.fillText(slicedBuys.last().price.toFixed(2, true), DELIMITER_X, lastBottomY + 10);
+  ctx.fillText(slicedSells.last().price.toFixed(2, true), DELIMITER_X, lastTopY + 10);
 
   //candles scale
-  ctx.fillText(maxCandle.toFixed(2), DELIMITER_X, getPriceY(maxCandle) + 10);
-  ctx.fillText(minCandle.toFixed(2), DELIMITER_X, getPriceY(minCandle) + 10);
+  ctx.fillText(maxCandle.toFixed(2, true), DELIMITER_X, getPriceY(maxCandle) + 10);
+  ctx.fillText(minCandle.toFixed(2, true), DELIMITER_X, getPriceY(minCandle) + 10);
   ctx.fillText('max vol', DELIMITER_X, HEIGHT - 50);
-  ctx.fillText(maxVolume.toFixed(2), DELIMITER_X, HEIGHT - 30);
+  ctx.fillText(maxVolume.toFixed(2, true), DELIMITER_X, HEIGHT - 30);
 
   //curr price
   ctx.strokeStyle = 'rgba(0, 125, 125, 1)';
   ctx.fillStyle = 'rgba(0, 125, 125, 1)';
 
-  ctx.fillText(candles.last().close.toFixed(2), DELIMITER_X, priceY + 5);
+  ctx.fillText(candles.last().close.toFixed(2, true), DELIMITER_X, priceY + 5);
   ctx.beginPath();
   ctx.moveTo(WIDTH, priceY);
   ctx.lineTo(DELIMITER_X + SCALE_WIDTH, priceY);
   ctx.stroke();
   ctx.closePath();
 
-  document.getElementById('pair').innerHTML = pair;
-
    if(dirty && getByID('need-cross').checked){
     ctx.beginPath();
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 0.3;
     ctx.strokeStyle = '#ffffff';
     ctx.moveTo(0, CROSSHAIR.y);
     ctx.lineTo(WIDTH, CROSSHAIR.y);
@@ -440,49 +652,30 @@ function drawAll(){
   }
 }
 
-
-/*
- * Detector test
- */
-function detectTest(){
-  if(!buys.length || !sells.length || !candles.length){
-    return
-  }
-  let count = valByID('candles-count');
-  let min = valByID('candles-min');
-  let threshold = valByID('candles-threshold');
-  let wall = valByID('wall-size');
-
-  let c = candles.slice(candles.length - count);
-  c.sort((a, b) => {return b.high - a.high});
-  let passed = true;
-  let fits = [];
-  for (let i = 0; i < min; i++) {
-    if(c[0].high - c[i].high > threshold){
-      // console.log(`${c[0].high} - ${c[i].high} > ${threshold}`);
-      getByID('detect-result').innerHTML = 'no (candles)';
-      return;
-    }
-    fits.push(c[i].high);
-  }
-  
-  let avg = fits.reduce((a,b) => a + b, 0) / fits.length;
-  // console.log(avg);
-  // console.log(c);
-  for (let i = 0; i < sells.length; i++) {
-    if(sells[i].price > avg && sells[i].sum < wall){
-      // console.log(`${sells[i].price} > ${avg} && ${sells[i].sum} < ${wall}`);
-      getByID('detect-result').innerHTML = 'no (walls)';
-      return;
-    }
-  }
-  getByID('detect-result').innerHTML = `should be ${avg}`;
-  // console.log(`should be it @ ${avg}`);
-}
-
 /*
  * Helpers
  */
+function drawMA(arr, color, ctx){
+  let max = Math.max.apply(null, arr);
+  let min = Math.min.apply(null, arr);
+  let delta = max - min;
+  let scale = BOTTOM_OFFSET / delta;
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  arr.forEach((el, i) => {
+    let x = i / arr.length * DELIMITER_X;
+    let y = DRAW_BOTTOM + BOTTOM_OFFSET * (1 - (el - min) / delta);
+
+    if(i == 0){
+      ctx.moveTo(x, y);
+    }else{
+      ctx.lineTo(x, y);
+    }
+  });
+  ctx.stroke();
+  ctx.closePath();
+}
+
 function createSellButton(sum, part, buy, precision, fee){
   let amount = Number((sum * (part - fee)).toFixed(precision));
   return `<button onclick="${buy ? 'buy' : 'sell'}(${amount})">${amount}</button>`;
@@ -503,10 +696,13 @@ socket.addEventListener('message', function (event) {
   let res = JSON.parse(event.data);
 
   let p = Number(res.price || res.p).toFixed(2);
-  window.document.title = p;
+  window.document.title = Number(p).toFixed(2, true) + ' ' +  '=(^-_-^)=';
+  getByID('pair').innerHTML = pair + ' : ' + Number(p).toFixed(2, true) + ' ' +  '=(^-_-^)=';
 
   getByID('b-price').value = p + 1;
   getByID('s-price').value = p - 1;
+  
+  price = p;
 
   if(res.type == 'main'){
     getByID('tf').value = res.tf;
@@ -514,11 +710,8 @@ socket.addEventListener('message', function (event) {
     sells = res.walls.sell;
     candles = res.candles.slice(res.candles.length - valByID('candles-lim'));
     candlesAll = res.candles.slice();
-    price = res.price;
     pair = res.pair;
     
-    // detectTest(res.walls.buy, res.walls.sell, res.candles.slice(res.candles.length - valByID('candles-lim')), res.price);
-
     if(res.balances){
       getByID('buyBtns').show();
       getByID('balance').innerHTML = '';
@@ -538,6 +731,7 @@ socket.addEventListener('message', function (event) {
         }
       }
     }
+
     if(res.orders){
       getByID('orders').innerHTML = '';
       for (let i = 0; i < res.orders.sell.length; i++) {
@@ -595,9 +789,17 @@ function sendConnect(){
 function cancelOrder(id){
   socket.send('{"action": "cancelOrder", "id": ' + id + '}');
 }
-// function setDepth(){
-//   socket.send('{"action": "depths-limits", "value": ' + valByID('depth-lim') + '}');
-// }
+function togglePredict(){
+  if(getByID('toggle-predict').innerHTML == 'predict +'){
+    //show
+    getByID('toggle-predict').innerHTML = 'predict -';
+    getByID('predict').show();
+  }else{
+    //hide
+    getByID('toggle-predict').innerHTML = 'predict +';
+    getByID('predict').hide();
+  }
+}
 function setTF(val){
   socket.send('{"action": "tf", "tf": "' + val + '"}');
 }
@@ -618,5 +820,216 @@ function buy(amount){
     price: Number(price.toFixed(2))
   }));
 }
+
+
+
+
+/**
+ * Moving Averages
+ */
+
+function getInterceptions (arr1, arr2) {
+  let res = [];
+  let diffs = [];
+  
+  if(arr1.length != arr2.length){
+      console.log('lengths mismatch');
+      return res;
+  }
+
+  for (var i = 0; i < arr1.length; i++) {
+      let diff = arr1[i] < arr2[i];
+      diffs.push(diff);
+      if(i > 0 && diffs[i - 1] != diff){
+          res.push(arr1[i]);
+      }
+  }
+  return res;
+} 
+
+Array.prototype.MA = function(size, field) {
+  field = field || 'close';
+  let src = this.slice().map((el) => { return Number(el[field]); });
+  return ma(src, size);
+}
+
+const isNumber = subject => typeof subject === 'number';
+
+const isArray = Array.isArray;
+
+// Dynamic Weighted Moving Average
+
+// @param {Number|Array.<Number>} alpha
+var dma = ((data, alpha, noHead) => {
+
+  const length = data.length;
+
+  if (alpha > 1) {
+    return Array(length);
+  }
+
+  if (alpha === 1) {
+    return data.slice();
+  }
+
+  const noArrayWeight = !isArray(alpha);
+  const ret = [];
+
+  let datum;
+
+  // period `i`
+  let i = 0;
+
+  // `s` is the value of the DWMA at any time period `i`
+  let s = 0;
+
+  // Handles head
+  for (; i < length; i++) {
+    datum = data[i];
+
+    if (isNumber(datum) && (noArrayWeight || isNumber(datum))) {
+
+      ret[i] = noHead ? 0 : datum;
+
+      s = datum;
+      i++;
+
+      break;
+    }
+  }
+
+  // Dynamic weights: an array of weights
+  // Ref:
+  // https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
+  // with a dynamic alpha
+  if (!noArrayWeight) {
+    for (; i < length; i++) {
+      datum = data[i];
+
+      isNumber(datum) && isNumber(alpha[i]) ? s = ret[i] = alpha[i] * datum + (1 - alpha[i]) * s : ret[i] = ret[i - 1];
+    }
+
+    return ret;
+  }
+
+  const o = 1 - alpha;
+
+  // Fixed alpha
+  for (; i < length; i++) {
+    datum = data[i];
+
+    isNumber(datum) ? s = ret[i] = alpha * datum + o * s : ret[i] = ret[i - 1];
+  }
+
+  return ret;
+});
+
+// Smoothed moving average
+
+var sma = ((data, size, times = 1) => dma(data, times / size, 1));
+
+// Exponential moving average with 86% total weight
+
+var ema = ((data, size) => dma(data, 2 / (size + 1)));
+
+// simple moving average
+
+var ma = ((data, size) => {
+  const length = data.length;
+
+  if (!size) {
+    return data.reduce((a, b) => a + b) / length;
+  }
+
+  if (size <= 1) {
+    return data.slice();
+  }
+
+  if (size > length) {
+    return Array(length);
+  }
+
+  const prepare = size - 1;
+  const ret = [];
+  let sum = 0;
+  let i = 0;
+  let counter = 0;
+  let datum;
+
+  for (; i < length && counter < prepare; i++) {
+    datum = data[i];
+
+    if (isNumber(datum)) {
+      sum += datum;
+      counter++;
+    }
+  }
+
+  for (; i < length; i++) {
+    datum = data[i];
+
+    if (isNumber(datum)) {
+      sum += datum;
+    }
+
+    if (isNumber(data[i - size])) {
+      sum -= data[i - size];
+    }
+
+    ret[i] = sum / size;
+  }
+
+  return ret;
+});
+
+// Weighted moving average
+
+var wma = ((data, size) => {
+  const length = data.length;
+
+  if (size <= 1) {
+    return data.slice();
+  }
+
+  if (size > length) {
+    return Array(length);
+  }
+
+  const ret = [];
+  const denominator = size * (size + 1) / 2;
+  const prepare = size - 1;
+  let sum = 0;
+  let numerator = 0;
+  let datum = 0;
+  let i = 0;
+  let real = -1;
+
+  for (; i < prepare; i++) {
+    datum = data[i];
+
+    if (isNumber(datum)) {
+      sum += datum;
+      numerator += (i + 1) * datum;
+    }
+  }
+
+  for (; i < length; i++, real++) {
+    datum = data[i];
+
+    if (isNumber(datum)) {
+      sum += datum;
+      numerator += size * datum;
+    }
+
+    if (real >= 0 && isNumber(data[real])) {
+      sum -= data[real];
+    }
+
+    ret[i] = numerator / denominator;
+    numerator -= sum;
+  }
+
+  return ret;
+});
 
 </script></body></html>
