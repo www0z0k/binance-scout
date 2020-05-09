@@ -63,7 +63,8 @@
     <br>
     fibo resist: <span id="fibo-resist"></span><br>
     fibo support: <span id="fibo-support"></span>
-
+    <br>
+    draw predictions <input type="checkbox" id="draw-predictions">
     <hr>
   </div>
 <span id="connection" style="z-index: 10;">
@@ -178,11 +179,15 @@ var fibo = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
  * Detector test
  */
 var candleResist, candleSupport, prevTime;
+var fibPoint = [];
+var wallPoint = [];
 var topUpdate = 0;
 var bottomUpdate = 0;
 var ticksPassed = 2000;//to help resetting
 togglePredict();
 getByID('use-candles').value = 5;
+getByID('use-candles-fibo').value = 3;
+getByID('draw-predictions').checked = true;
 
 function resetCount(){
   topUpdate = bottomUpdate = 0;
@@ -218,11 +223,12 @@ function tryUpdateResist(val){
   if(isNaN(val)){
     if(ticksPassed - topUpdate > valByID('candle-levels-ttl') || !candleResist){
       getByID('detect-result-candles-top').innerHTML = val;
+      candleResist = 0;
     }
   }else{
     if(ticksPassed - topUpdate > valByID('candle-levels-ttl') || val >= candleResist || !candleResist){
       topUpdate = ticksPassed;
-      candleResist = val.toFixed(2);
+      candleResist = val;
       getByID('detect-result-candles-top').innerHTML = val.toFixed(2);
     }
   }
@@ -258,10 +264,11 @@ function tryUpdateSupport(val){
   if(isNaN(val)){
     if(ticksPassed - topUpdate > valByID('candle-levels-ttl') || !candleSupport){
       getByID('detect-result-candles-bottom').innerHTML = val;
+      candleSupport = 0;
     }
   }else{
     if(ticksPassed - topUpdate > valByID('candle-levels-ttl') || val <= candleSupport || !candleSupport){
-      candleSupport = val.toFixed(2);
+      candleSupport = val;
       bottomUpdate = ticksPassed;
       getByID('detect-result-candles-bottom').innerHTML = val.toFixed(2);
     }
@@ -280,19 +287,21 @@ function checkMA(){
 }
 
 function checkWalls(){
+  wallPoint = [];
   for (let i = 0; i < buys.length; i++) {
     if(buys[i].sum > valByID('big-wall')){
+      wallPoint.push(buys[i].price);
       getByID('bottom-wall').innerHTML = buys[i].price.toFixed(2, true) + ` [${buys[i].sum.toFixed(2, true)}]`;
       break;
     }
   }
   for (let i = 0; i < sells.length; i++) {
     if(sells[i].sum > valByID('big-wall')){
+      wallPoint.push(sells[i].price);
       getByID('top-wall').innerHTML = sells[i].price.toFixed(2, true) + ` [${sells[i].sum.toFixed(2, true)}]`;
       break;
     }
-  }
-  
+  }  
 }
 function checkFibo(c){
   getByID('fibo-resist').innerHTML = '';
@@ -300,14 +309,19 @@ function checkFibo(c){
   let max = Math.max.apply(null, c.map(el => el.high));
   let min = Math.min.apply(null, c.map(el => el.low));
   let delta = max - min;
-  fibo.map(el => min + el * delta).forEach(el => {
+  fibPoint = [];
+  let a = fibo.map(el => min + el * delta).forEach(el => {
     if(el < price){
       getByID('fibo-support').innerHTML += el.toFixed(2, true) + ', ';
+      fibPoint.push(el);
     }else{
       getByID('fibo-resist').innerHTML += el.toFixed(2, true) + ', ';
+      fibPoint.push(el);
     }
   });
+  delete a;
 }
+
 function detectTest(){
   if(!buys.length || !sells.length || !candlesAll.length){
     return
@@ -417,7 +431,6 @@ function drawAll(){
   /*
    * Grid
    */
-
   var scaleStep = 10;
   if(dPrice > 5000){
     scaleStep = 500;
@@ -604,10 +617,36 @@ function drawAll(){
   drawMA(candlesAll.MA(valByID('ma1'), 'close').filter(el => !isNaN(el)), '#ff0000', ctx);
   drawMA(candlesAll.MA(valByID('ma2'), 'close').filter(el => !isNaN(el)), '#00ff00', ctx);
 
+   
+  /*
+   * Predictions
+   */
+   
+  if(getByID('draw-predictions').checked){
+    ctx.font = '11px monospace';
+    if(wallPoint.length){
+      if(wallPoint[0] > absMin){
+        drawCaptionedLine(DELIMITER_X + SCALE_WIDTH, getPriceY(wallPoint[0]), WIDTH, getPriceY(wallPoint[0]), wallPoint[0].toFixed(0) + '[w]', '#22ff22', ctx);
+      }
+      drawCaptionedLine(DELIMITER_X + SCALE_WIDTH, getPriceY(wallPoint[1]), WIDTH, getPriceY(wallPoint[1]), wallPoint[1].toFixed(0) + '[w]', '#ff2222', ctx);
+    }
+    if(fibPoint.length){
+      for (let i = 0; i < fibPoint.length; i++) {
+        
+        drawCaptionedLine(DELIMITER_X + SCALE_WIDTH, getPriceY(fibPoint[i]), WIDTH, getPriceY(fibPoint[i]), fibPoint[i].toFixed(0) + '[f]', fibPoint[i] > price ? '#ff2222' : '#22ff22', ctx, true);
+      }
+    }
+    if(candleSupport){
+      drawCaptionedLine(DELIMITER_X + SCALE_WIDTH, getPriceY(candleSupport), WIDTH, getPriceY(candleSupport), candleSupport.toFixed(0) + '[c]', '#22ff22', ctx);
+    }
+    if(candleResist){
+      drawCaptionedLine(DELIMITER_X + SCALE_WIDTH, getPriceY(candleResist), WIDTH, getPriceY(candleResist), candleResist.toFixed(0) + '[c]', '#ff2222', ctx);
+    }
+  }
+
   /*
    * Captions
    */
-   
   ctx.fillStyle = 'yellow';
   ctx.font = '11px monospace';
   //minimap
@@ -655,6 +694,18 @@ function drawAll(){
 /*
  * Helpers
  */
+function drawCaptionedLine(x, y, x1, y1, text, color, ctx, alignTextRight){
+  ctx.beginPath();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = '#ffffff';
+  ctx.moveTo(x, y);
+  ctx.lineTo(x1, y1);
+  ctx.fillText(text, alignTextRight ? x1 - 42 : x, y);
+  ctx.stroke();
+  ctx.closePath();
+}
+
 function drawMA(arr, color, ctx){
   let max = Math.max.apply(null, arr);
   let min = Math.min.apply(null, arr);
