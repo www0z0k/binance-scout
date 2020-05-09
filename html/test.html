@@ -297,8 +297,8 @@ function checkWalls(){
 function checkFibo(c){
   getByID('fibo-resist').innerHTML = '';
   getByID('fibo-support').innerHTML = '';
-  let max = Math.max.apply(null, c.map(el => el.close));
-  let min = Math.min.apply(null, c.map(el => el.close));
+  let max = Math.max.apply(null, c.map(el => el.high));
+  let min = Math.min.apply(null, c.map(el => el.low));
   let delta = max - min;
   fibo.map(el => min + el * delta).forEach(el => {
     if(el < price){
