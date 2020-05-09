@@ -54,10 +54,7 @@
       <option value="1M">1M</option>
   </select> 
 </span>
-<!-- <div style="position: relative;"> -->
-  <canvas id="canv" width="1060" height="550" style="display: none; border:1px solid #ff00ff;"></canvas>
-  <canvas id="canv2" width="1060" height="550" style="display: none; border:1px solid #ff00ff; z-index:2;margin-top:-550px;" onmousemove="canvasMove(event)" onmouseout="clearCrosshair()"></canvas>
-<!-- </div> -->
+<canvas id="canv" width="1060" height="550" style="display: none; border:1px solid #ff00ff;" onmousemove="canvasMove(event)" onmouseout="clearCrosshair()"></canvas>
 <br>
 <table style="width: 1060px;">
   <tr>
@@ -114,7 +111,6 @@ var DELIMITER_X = 400;
 var SCALE_WIDTH = 60;
 
 var canvas = document.getElementById("canv");
-var canvasTop = document.getElementById("canv2");
 var ctx = canvas.getContext('2d');
 var WIDTH = canvas.width;
 var HEIGHT = canvas.height;
@@ -132,27 +128,11 @@ var startPrice, pair;
  * Crosshair
  */
 var dirty = false;
-setInterval(el => {
-  let ctx = canvasTop.getContext('2d');
-  // if(CROSSHAIR.x > -1 && CROSSHAIR.y > -1){
-  if(dirty && getByID('need-cross').checked){
-    ctx.clearRect(0, 0, WIDTH, HEIGHT);
-    ctx.beginPath();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = '#ffffff';
-    ctx.moveTo(0, CROSSHAIR.y);
-    ctx.lineTo(WIDTH, CROSSHAIR.y);
-    ctx.moveTo(CROSSHAIR.x, 0);
-    ctx.lineTo(CROSSHAIR.x, HEIGHT);
-    ctx.stroke();
-    ctx.closePath();
-    dirty = false;
-  }
-}, 33)
+
 setInterval(el => {
   drawAll();
   detectTest();
-}, 50)
+}, 40)
 var CROSSHAIR = {x: -1, y: -1};
 function canvasMove(e){
   CROSSHAIR = {x: e.offsetX, y: e.offsetY};
@@ -160,12 +140,7 @@ function canvasMove(e){
 }
 
 function clearCrosshair(){
-  let ctx = canvasTop.getContext('2d');
-  ctx.clearRect(0, 0, WIDTH, HEIGHT);
   dirty = false;
-  // CROSSHAIR = {x: -1, y: -1};
-  // let ctx = canvasTop.getContext('2d');
-  // ctx.clearRect(0, 0, WIDTH, HEIGHT);
 }
 /*
  * Main display
@@ -179,7 +154,7 @@ function drawAll(){
   let slicedBuys = buys.slice(0, valByID('depth-lim'));
   let slicedSells = sells.slice(0, valByID('depth-lim'));
 
-  canvasTop.show();
+  // canvasTop.show();
   canvas.show();
 
   ctx.beginPath();
@@ -299,19 +274,37 @@ function drawAll(){
    * Recent trades
    */
 
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(255, 255, 0, 0.1)';
+  ctx.strokeStyle = 'rgba(255, 255, 0, 1)';
   for (let i = 0; i < currentTrades.length; i++) {
-    ctx.beginPath();
-    ctx.fillStyle = currentTrades[i].m ? 'rgba(0, 0, 255, 0.1)' : 'rgba(255, 255, 0, 0.1)';
-    ctx.strokeStyle = currentTrades[i].m ? 'rgba(0, 0, 255, 1)' : 'rgba(255, 255, 0, 1)';
+    if(currentTrades[i].m)continue;
     let x = DELIMITER_X * (currentTrades[i].ts - Date.now()) / valByID('trade-ttl') + DELIMITER_X;
     let y = getPriceY(Number(currentTrades[i].p));
     let r = Math.sqrt(currentTrades[i].p * currentTrades[i].q) / 5;
     r = r < 1 ? 1 : r;
+    ctx.moveTo(x + r, y);
     ctx.arc(x, y, r, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.stroke();
-    ctx.closePath();
   }
+  ctx.fill();
+  ctx.stroke();
+  ctx.closePath();
+
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(0, 0, 255, 0.1)';
+  ctx.strokeStyle = 'rgba(0, 0, 255, 1)';
+  for (let i = 0; i < currentTrades.length; i++) {
+    if(!currentTrades[i].m)continue;
+    let x = DELIMITER_X * (currentTrades[i].ts - Date.now()) / valByID('trade-ttl') + DELIMITER_X;
+    let y = getPriceY(Number(currentTrades[i].p));
+    let r = Math.sqrt(currentTrades[i].p * currentTrades[i].q) / 5;
+    r = r < 1 ? 1 : r;
+    ctx.moveTo(x + r, y);
+    ctx.arc(x, y, r, 0, 2 * Math.PI);
+  }
+  ctx.fill();
+  ctx.stroke();
+  ctx.closePath();
    
   /*
    * Candles
@@ -320,12 +313,12 @@ function drawAll(){
   var candleWidth = (WIDTH - SCALE_WIDTH - DELIMITER_X) / candles.length - space;
 
   var priceScale = DRAW_BOTTOM / dPrice;
-
+  //bull
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(0, 255, 0, 0.4)';
+  ctx.strokeStyle = 'rgba(0, 255, 0, 1)';
   candles.forEach((el, i) => {
-    ctx.beginPath();
-    ctx.strokeStyle = el.bull ? 'rgba(0, 255, 0, 1)' : 'rgba(255, 0, 0, 1)';
-    ctx.fillStyle = el.bull ? 'rgba(0, 255, 0, 0.4)' : 'rgba(255, 0, 0, 0.4)';
-
+    if(!el.bull)return
     var startX = DELIMITER_X + SCALE_WIDTH + i * (space + candleWidth) + space / 2;
     var centerX = startX + candleWidth / 2;
 
@@ -337,11 +330,33 @@ function drawAll(){
     ctx.rect(startX, getPriceY(Math.max(el.open, el.close)), candleWidth, Math.abs(el.close - el.open) * priceScale);
     //volume - test
     ctx.rect(startX, HEIGHT, candleWidth, -(BOTTOM_OFFSET - 10) * el.volume / maxVolume);
-
-    ctx.fill();
-    ctx.stroke();
-    ctx.closePath();
   });
+  ctx.fill();
+  ctx.stroke();
+  ctx.closePath();
+
+  //bear
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+  ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
+  candles.forEach((el, i) => {
+    if(el.bull)return
+    var startX = DELIMITER_X + SCALE_WIDTH + i * (space + candleWidth) + space / 2;
+    var centerX = startX + candleWidth / 2;
+
+    ctx.moveTo(centerX, getPriceY(el.high));
+    ctx.lineTo(centerX, el.bull ? getPriceY(el.close) : getPriceY(el.open));
+    ctx.moveTo(centerX, el.bull ? getPriceY(el.open) : getPriceY(el.close));
+    ctx.lineTo(centerX, getPriceY(el.low));
+
+    ctx.rect(startX, getPriceY(Math.max(el.open, el.close)), candleWidth, Math.abs(el.close - el.open) * priceScale);
+    //volume - test
+    ctx.rect(startX, HEIGHT, candleWidth, -(BOTTOM_OFFSET - 10) * el.volume / maxVolume);
+  });
+  
+  ctx.fill();
+  ctx.stroke();
+  ctx.closePath();
   
   /*
    * Minimap
@@ -410,6 +425,19 @@ function drawAll(){
   ctx.closePath();
 
   document.getElementById('pair').innerHTML = pair;
+
+   if(dirty && getByID('need-cross').checked){
+    ctx.beginPath();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#ffffff';
+    ctx.moveTo(0, CROSSHAIR.y);
+    ctx.lineTo(WIDTH, CROSSHAIR.y);
+    ctx.moveTo(CROSSHAIR.x, 0);
+    ctx.lineTo(CROSSHAIR.x, HEIGHT);
+    ctx.stroke();
+    ctx.closePath();
+    // dirty = false;
+  }
 }
 
 
