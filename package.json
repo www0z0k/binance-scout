@@ -8,7 +8,7 @@
     "express": "^4.17.1",
     "moving-averages": "^4.0.5",
     "node-binance-api": "^0.10.7",
-    "ws": "^7.2.5"
+    "ws": "^7.4.6"
   },
   "devDependencies": {},
   "scripts": {
